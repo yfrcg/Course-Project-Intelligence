@@ -1,0 +1,5 @@
+@echo off
+setlocal
+REM Optional: set GITHUB_TOKEN before launch if you want a higher GitHub API rate limit.
+REM set GITHUB_TOKEN=ghp_your_token_here
+python -m app.main --transport stdio

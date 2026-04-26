@@ -1,0 +1,1 @@
+claude mcp add course-project-intelligence -- course-intel-mcp --transport stdio

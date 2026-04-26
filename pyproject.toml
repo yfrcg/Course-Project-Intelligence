@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "course-project-intelligence-mcp-server"
+version = "1.0.0rc1"
+description = "Course Project Intelligence MCP Server - 面向高校计算机课程项目的垂直检索与情报服务"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "yfrcg" }
+]
+license = { text = "MIT" }
+keywords = [
+  "mcp",
+  "model-context-protocol",
+  "agent-tools",
+  "github-search",
+  "course-projects",
+  "education",
+  "retrieval"
+]
+dependencies = [
+  "mcp>=1.9.0",
+  "httpx>=0.27.0",
+  "beautifulsoup4>=4.12.3",
+  "pydantic>=2.7.0",
+  "pydantic-settings>=2.2.1",
+  "starlette>=0.37.2",
+  "uvicorn>=0.30.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2.0",
+  "pytest-asyncio>=0.23.7"
+]
+
+[project.scripts]
+cpi-mcp = "app.main:main"
+course-intel-mcp = "app.main:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["app*"]

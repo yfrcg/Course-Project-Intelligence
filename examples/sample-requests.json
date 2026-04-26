@@ -1,0 +1,41 @@
+{
+  "search_course_projects": {
+    "query": "南开大学 算法导论 大作业 图搜索 可视化 github",
+    "school": "南开大学",
+    "course": "算法导论",
+    "top_k": 5,
+    "source_types": ["github"]
+  },
+  "inspect_course_project": {
+    "repo": "lazy-forever/CourseSelectSystem",
+    "query": "南开大学 数据库系统 大作业",
+    "include_readme": true,
+    "include_tree": true
+  },
+  "compare_course_projects": {
+    "repos": [
+      "lazy-forever/CourseSelectSystem",
+      "le-77-rrg/NKU_DATABASE_SYSTEM"
+    ],
+    "query": "南开大学 数据库系统 大作业",
+    "criteria": ["数据库设计", "模块划分", "报告结构"],
+    "include_details": true
+  },
+  "get_project_brief": {
+    "url": "https://github.com/example/repo"
+  },
+  "compare_project_routes": {
+    "query": "数据库课程大作业 后端路线",
+    "urls": [
+      "https://github.com/example/repo-a",
+      "https://github.com/example/repo-b"
+    ],
+    "top_k": 3
+  },
+  "list_course_resources": {
+    "school": "南开大学",
+    "course": "操作系统",
+    "top_k": 5
+  },
+  "safety_note": "这些请求用于学习参考和技术路线调研，不用于直接生成或提交课程作业。"
+}

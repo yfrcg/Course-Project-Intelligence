@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "course-project-intelligence": {
+      "command": "course-intel-mcp",
+      "args": ["--transport", "stdio"],
+      "env": {
+        "GITHUB_TOKEN": ""
+      }
+    }
+  }
+}

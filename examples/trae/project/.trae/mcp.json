@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "course-project-intelligence": {
+      "command": "python",
+      "args": ["-m", "app.main", "--transport", "stdio"],
+      "env": {
+        "GITHUB_TOKEN": ""
+      }
+    }
+  }
+}
