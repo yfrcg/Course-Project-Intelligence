@@ -6,7 +6,7 @@
 
 新增 provider 时，应满足以下约束：
 
-- 不改现有 4 个 MCP tools 的名称和输入输出
+- 不改现有 5 个 MCP tools 的名称和输入输出，其中 `build_course_context` 是 Agent Context Pack 封装层
 - 不移除已有 provider
 - 不引入重依赖
 - 输出仍然以学习参考和公开资料情报为边界

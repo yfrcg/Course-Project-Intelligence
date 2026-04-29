@@ -12,14 +12,70 @@ SAFETY_NOTE_TEXT = (
 
 
 class SearchCourseProjectsInput(BaseModel):
-    query: str = Field(..., description="Natural-language query.")
+    query: str = Field(
+        ...,
+        description="Natural-language query for university CS course resources, projects, labs, notes, assignments, reports, or repositories.",
+    )
     school: Optional[str] = Field(default=None, description="Optional school constraint.")
     course: Optional[str] = Field(default=None, description="Optional course constraint.")
-    source_types: List[str] = Field(default_factory=list, description="Source filters.")
+    source_types: List[str] = Field(
+        default_factory=list,
+        description="Optional source filters such as github, gitee, or web.",
+    )
     top_k: int = Field(default=5, ge=1, le=20, description="Number of results to return.")
     freshness: Optional[str] = Field(default=None, description="Optional freshness hint.")
     allow_domains: List[str] = Field(default_factory=list, description="Allow-list of domains.")
     deny_domains: List[str] = Field(default_factory=list, description="Deny-list of domains.")
+
+
+class SearchCourseResourcesInput(BaseModel):
+    query: str = Field(
+        ...,
+        description="Broad natural-language query for university CS course resources or study materials.",
+    )
+    school: Optional[str] = Field(default=None, description="Optional school constraint.")
+    course: Optional[str] = Field(default=None, description="Optional course constraint.")
+    providers: List[str] = Field(
+        default_factory=list,
+        description="Optional provider filters such as github, gitee, or web.",
+    )
+    top_k: int = Field(default=5, ge=1, le=20, description="Number of results to return.")
+    include_notes: bool = Field(default=True, description="Whether to bias toward notes and study materials.")
+    include_labs: bool = Field(default=True, description="Whether to bias toward labs and experiment repositories.")
+    include_projects: bool = Field(default=True, description="Whether to bias toward course projects and final assignments.")
+    include_reports: bool = Field(default=True, description="Whether to bias toward reports and writeups.")
+    freshness: Optional[str] = Field(default=None, description="Optional freshness hint.")
+    allow_domains: List[str] = Field(default_factory=list, description="Allow-list of domains.")
+    deny_domains: List[str] = Field(default_factory=list, description="Deny-list of domains.")
+
+
+class BuildCourseContextInput(BaseModel):
+    query: str = Field(
+        ...,
+        description="User question about course resources, course projects, or learning references that the agent wants to turn into a structured evidence pack.",
+    )
+    max_sources: int = Field(default=5, ge=1, le=10, description="Maximum number of evidence cards to keep in the context pack.")
+    max_context_chars: int = Field(default=6000, ge=1200, le=20000, description="Maximum approximate character budget for the structured context pack.")
+    intended_use: Optional[str] = Field(
+        default=None,
+        description="Optional note about how the agent plans to use the references, such as study guidance, topic selection, or report-structure analysis.",
+    )
+    source_urls: Optional[List[str]] = Field(
+        default=None,
+        description="Optional known repository or webpage URLs that should be turned into evidence cards without requiring a fresh search.",
+    )
+    search_results: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description="Optional existing search results from search_course_projects or search_course_resources that should be reused directly.",
+    )
+    inspect_results: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description="Optional existing inspect_course_project results that should be converted into evidence cards without re-running inspection.",
+    )
+    compare_result: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Optional existing compare_course_projects result that should be summarized into the final agent context pack.",
+    )
 
 
 class SearchResultItem(BaseModel):
@@ -75,6 +131,28 @@ class SearchCourseProjectsOutput(BaseModel):
     scope_note: Optional[str] = None
     scope_coverage: Dict[str, Any] = Field(default_factory=dict)
     safety_note: str = SAFETY_NOTE_TEXT
+
+
+class EvidenceCardOutput(BaseModel):
+    title: str
+    url: Optional[str] = None
+    source_type: str
+    relevance_reason: str
+    usable_parts: List[str] = Field(default_factory=list)
+    risk_flags: List[str] = Field(default_factory=list)
+    recommended_usage: str
+    citation_hint: Optional[str] = None
+    raw_score: Optional[float] = None
+
+
+class CourseContextPackOutput(BaseModel):
+    query: str
+    intent: str
+    summary_for_agent: str
+    evidence_cards: List[EvidenceCardOutput] = Field(default_factory=list)
+    suggested_next_tool: Optional[str] = None
+    agent_usage_guidance: str
+    safety_note: str
 
 
 class GetProjectBriefInput(BaseModel):
@@ -181,10 +259,10 @@ class InspectCourseProjectInput(BaseModel):
     repo: str = Field(..., description="GitHub repository in owner/name form.")
     query: Optional[str] = Field(
         default=None,
-        description="Optional user task context used to judge fit without re-running search.",
+        description="Optional user task context used to judge fit_for_query without re-running search.",
     )
     include_readme: bool = Field(default=True, description="Whether to summarize README.")
-    include_tree: bool = Field(default=True, description="Whether to include root tree.")
+    include_tree: bool = Field(default=True, description="Whether to include the root tree for asset detection.")
 
 
 class InspectCourseProjectOutput(BaseModel):
@@ -229,11 +307,11 @@ class CompareCourseProjectsInput(BaseModel):
         ...,
         min_length=2,
         max_length=5,
-        description="GitHub repositories in owner/name form.",
+        description="GitHub repositories in owner/name form to compare as candidate learning references.",
     )
     query: Optional[str] = Field(
         default=None,
-        description="Optional user task context used to evaluate fitness.",
+        description="Optional user task context used to evaluate fitness for notes, labs, reports, code structure, or other criteria.",
     )
     criteria: List[str] = Field(default_factory=list, description="Optional comparison criteria.")
     include_details: bool = Field(default=True, description="Whether to include per-repo details.")

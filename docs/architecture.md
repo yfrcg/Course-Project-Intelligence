@@ -19,7 +19,7 @@ app/main.py
 
 - `server`
   - 创建 `FastMCP` 实例。
-  - 注册 4 个对外 MCP tools。
+  - 注册 5 个对外 MCP tools。
   - 只关心 tool 名称、说明、structured output 和传输挂载路径。
 - `tools`
   - 把 MCP tool 参数封装成 `schemas.py` 中的输入模型。

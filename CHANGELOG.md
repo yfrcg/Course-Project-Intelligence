@@ -6,13 +6,74 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+### v1.4 agent-workflow-closure / context-from-known-sources / release-readiness
+
+#### Added
+- Support for `build_course_context` from known `source_urls`
+- Support for `build_course_context` from existing `search_results`
+- Support for `build_course_context` from existing `inspect_results`
+- Support for `build_course_context` from existing `compare_result`
+- Final `docs/agent-workflow.md` for the closed-loop agent workflow
+- Workflow closure eval fixtures and `eval/run_workflow_eval.py`
+
+#### Changed
+- `build_course_context` now closes the workflow across search, inspect, compare, and known-source inputs while keeping the same output contract
+- ContextBuilder now normalizes search, inspect, compare, and provided-source inputs into the same EvidenceCard workflow
+- README, routing docs, and examples now consistently describe the five-tool workflow and final agent-facing context pack
+- Smoke coverage now validates query-only, `source_urls`, `search_results`, `inspect_results`, and `compare_result` paths
+
+#### Compatibility
+- Preserved compatibility for `search_course_projects`, `search_course_resources`, `inspect_course_project`, `compare_course_projects`, and `build_course_context`
+- Preserved `search_course_resources` as a wrapper over `search_course_projects`
+- Preserved `build_course_context` as an Agent Context Pack layer rather than a new search engine
+
+### v1.3 agent-context-pack / evidence-card / context-builder
+
+#### Added
+- Agent Context Pack layer for AI agents and MCP hosts
+- `EvidenceCard` schema and `CourseContextPack` output contract
+- `ContextBuilder` with evidence-card packaging and context-size control
+- Lightweight `risk_flags` and `citation_hint` generation
+- `build_course_context` MCP tool
+- `docs/agent-context-pack.md`
+- Agent-context eval fixtures and `eval/run_agent_context_eval.py`
+
+#### Changed
+- README now documents Agent Context Pack usage and `build_course_context`
+- Tool routing guide now explains when to prefer `build_course_context`
+- Smoke coverage now checks `build_course_context` registration, schema, and sample structured output
+
+#### Compatibility
+- Preserved compatibility for `search_course_projects`, `search_course_resources`, `inspect_course_project`, and `compare_course_projects`
+
+### v1.2 host-adoption / prompt-cookbook / routing-diagnostics
+
+#### Added
+- Prompt cookbook examples for natural-language tool triggering
+- Host test prompts for Trae, Claude Code, Cursor, and generic MCP hosts
+- Routing diagnostics documentation for host adoption troubleshooting
+- Expanded routing eval queries covering broader host-adoption scenarios
+
+#### Changed
+- Smoke outputs are now more readable and report discovered tools, keyword checks, alias metadata, and schema-description checks
+- README now links prompt cookbook, host test prompts, routing diagnostics, and recommended host-adoption prompts
+
+#### Compatibility
+- Preserved compatibility for `search_course_projects`, `search_course_resources`, `inspect_course_project`, and `compare_course_projects`
+
 ### Added
 - Release notes for `v1.0-rc1`
 - Release checklist for `v1.0-rc1`
 - Expanded eval documentation covering search / inspect / compare, school scope, course profiles, course-specific assets, and safety checks
+- `search_course_resources` as a broader alias-style wrapper over `search_course_projects`
+- Host integration guides for Trae, Claude Code, and Cursor
+- Tool routing guide for MCP hosts
+- Lightweight smoke and eval coverage for tool descriptions, schema visibility, and routing metadata
 
 ### Changed
 - Unified public version wording across README, docs, and examples: `v0.8` = Broad School Retrieval, `v0.9` = Course-Aware Retrieval And Analysis, `v1.0-rc1` = Stable Agent Workflow Release
+- Strengthened MCP tool descriptions and schema hints for `search_course_projects`, `search_course_resources`, `inspect_course_project`, and `compare_course_projects`
+- README now documents host differences, routing expectations, and broad course-resource entry behavior
 
 ## [1.0.0rc1] - 2026-04-26
 
