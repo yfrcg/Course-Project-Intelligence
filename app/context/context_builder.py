@@ -16,6 +16,7 @@ from app.schemas import (
     SearchCourseProjectsOutput,
     SearchResultItem,
 )
+from app.utils.github_urls import canonical_github_repo_url, is_github_repo_url
 from app.utils.text import unique_preserve_order
 
 
@@ -74,7 +75,12 @@ class ContextBuilder:
                 cards=self.from_inspect_results(query=query, inspect_results=inspect_items),
                 intended_use=intended_use,
                 suggested_next_tool=None if compare_output else self._suggest_next_tool_for_inspect(inspect_items),
-                summary_for_agent=self._build_inspect_summary(query=query, inspect_results=inspect_items, compare_output=compare_output, intended_use=intended_use),
+                summary_for_agent=self._build_inspect_summary(
+                    query=query,
+                    inspect_results=inspect_items,
+                    compare_output=compare_output,
+                    intended_use=intended_use,
+                ),
                 compare_output=compare_output,
                 extra_safety_notes=[result.safety_note for result in inspect_items if result.safety_note],
             )
@@ -86,19 +92,29 @@ class ContextBuilder:
                 cards=self.from_compare_result(query=query, compare_result=compare_output),
                 intended_use=intended_use,
                 suggested_next_tool=None,
-                summary_for_agent=self._build_compare_summary(query=query, compare_result=compare_output, intended_use=intended_use),
+                summary_for_agent=self._build_compare_summary(
+                    query=query,
+                    compare_result=compare_output,
+                    intended_use=intended_use,
+                ),
                 compare_output=compare_output,
                 extra_safety_notes=[compare_output.safety_note],
             )
 
         if search_items:
+            cards = self.from_search_results(query=query, search_results=search_items)
             return self._finalize_pack(
                 query=query,
                 intent="course_resource_search",
-                cards=self.from_search_results(query=query, search_results=search_items),
+                cards=cards,
                 intended_use=intended_use,
-                suggested_next_tool=self._suggest_next_tool_for_search(query=query, cards=self.from_search_results(query=query, search_results=search_items)),
-                summary_for_agent=self._build_search_summary(query=query, total_found=len(search_items), cards=self.from_search_results(query=query, search_results=search_items), intended_use=intended_use),
+                suggested_next_tool=self._suggest_next_tool_for_search(query=query, cards=cards),
+                summary_for_agent=self._build_search_summary(
+                    query=query,
+                    total_found=len(search_items),
+                    cards=cards,
+                    intended_use=intended_use,
+                ),
             )
 
         if source_urls:
@@ -108,8 +124,12 @@ class ContextBuilder:
                 intent="provided_sources",
                 cards=cards,
                 intended_use=intended_use,
-                suggested_next_tool="inspect_course_project" if cards else None,
-                summary_for_agent=self._build_source_url_summary(query=query, cards=cards, intended_use=intended_use),
+                suggested_next_tool=self._suggest_next_tool_for_source_urls(cards),
+                summary_for_agent=self._build_source_url_summary(
+                    query=query,
+                    cards=cards,
+                    intended_use=intended_use,
+                ),
             )
 
         if query_search_output is not None:
@@ -120,7 +140,12 @@ class ContextBuilder:
                 cards=cards,
                 intended_use=intended_use,
                 suggested_next_tool=self._suggest_next_tool_for_search(query=query, cards=cards),
-                summary_for_agent=self._build_search_summary(query=query, total_found=query_search_output.total_found, cards=cards, intended_use=intended_use),
+                summary_for_agent=self._build_search_summary(
+                    query=query,
+                    total_found=query_search_output.total_found,
+                    cards=cards,
+                    intended_use=intended_use,
+                ),
                 extra_safety_notes=[query_search_output.safety_note],
             )
 
@@ -176,8 +201,10 @@ class ContextBuilder:
         output = self._coerce_compare_result(compare_result)
         if output is None:
             return []
-        cards = [self._comparison_item_to_evidence_card(query=query, item=item) for item in output.comparison[: self.max_sources]]
-        return cards
+        return [
+            self._comparison_item_to_evidence_card(query=query, item=item)
+            for item in output.comparison[: self.max_sources]
+        ]
 
     def from_source_urls(
         self,
@@ -186,27 +213,44 @@ class ContextBuilder:
         source_urls: list[str],
     ) -> list[EvidenceCard]:
         cards: list[EvidenceCard] = []
-        for url in source_urls[: self.max_sources]:
-            title = self._derive_title_from_url(url)
-            source_type = "github_repo" if any(token in (url or "").lower() for token in ["github.com", "gitee.com"]) else "unknown"
+        for original_url in source_urls[: self.max_sources]:
+            normalized_url = canonical_github_repo_url(original_url) or original_url
+            source_type = "github_repo" if is_github_repo_url(original_url) else "unsupported_source"
+            title = self._derive_title_from_url(normalized_url)
             base_item = SearchResultItem(
                 title=title,
-                url=url,
+                url=normalized_url,
                 source="provided",
-                source_type="github" if source_type == "github_repo" else "unknown",
-                snippet="User-provided source URL that has not been inspected yet.",
-                explanation="This source was provided directly and should be inspected before detailed claims are made.",
+                source_type="github" if source_type == "github_repo" else "unsupported_source",
+                snippet=(
+                    "User-provided GitHub repository URL that has not been inspected yet."
+                    if source_type == "github_repo"
+                    else "User-provided URL is outside the GitHub-only support scope of the current release."
+                ),
+                explanation=(
+                    "This GitHub repository was provided directly and should be inspected before detailed claims are made."
+                    if source_type == "github_repo"
+                    else "Current release does not deeply inspect non-GitHub URLs. Provide a GitHub repository URL instead."
+                ),
                 confidence=0.2,
                 score=None,
             )
             card = self._build_evidence_card_from_search_item(query=query, item=base_item)
-            risk_flags = unique_preserve_order([*card.risk_flags, "low_confidence", "may_be_outdated"])
+            if source_type == "github_repo":
+                risk_flags = unique_preserve_order([*card.risk_flags, "low_confidence", "may_be_outdated"])
+                recommended_usage = "Inspect this GitHub repository before making detailed claims or comparing it with other candidates."
+            else:
+                risk_flags = unique_preserve_order([*card.risk_flags, "unsupported_source", "low_confidence"])
+                recommended_usage = (
+                    "Current release does not support deep inspection for this source. "
+                    "Provide a GitHub repository URL instead."
+                )
             cards.append(
                 card.model_copy(
                     update={
                         "source_type": source_type,
                         "risk_flags": risk_flags,
-                        "recommended_usage": "Inspect this provided source before making detailed claims or comparing it with other candidates.",
+                        "recommended_usage": recommended_usage,
                     }
                 )
             )
@@ -221,13 +265,13 @@ class ContextBuilder:
         item = inspect_result if isinstance(inspect_result, InspectCourseProjectOutput) else InspectCourseProjectOutput.model_validate(inspect_result)
         title = item.repo or item.url or "Provided source"
         url = item.url or self._repo_to_url(item.repo)
-        source_type = "github_repo" if item.repo or "github.com" in (url or "").lower() else "unknown"
+        source_type = self._normalize_url_source_type(url or "")
         usable_parts = self._infer_usable_parts_from_inspect(item)
         pseudo_search_item = SearchResultItem(
             title=title,
             url=url or "",
             source="inspect",
-            source_type="github" if source_type == "github_repo" else "unknown",
+            source_type="github" if source_type == "github_repo" else source_type,
             repo=item.repo,
             snippet=item.readme_summary or "",
             explanation=item.task_fit_reason or item.why_recommended or item.risk_note or "",
@@ -241,14 +285,24 @@ class ContextBuilder:
         risk_flags = infer_risk_flags(query, pseudo_search_item, usable_parts)
         if source_type == "github_repo":
             risk_flags = unique_preserve_order(["not_official", *risk_flags])
-        recommended_usage = self._build_recommended_usage(usable_parts)
+        recommended_usage = self._build_recommended_usage(usable_parts, source_type=source_type)
         if item.suggested_usage:
             recommended_usage = _shorten(" ".join(unique_preserve_order(item.suggested_usage[:2])), 180)
+        if source_type == "unsupported_source":
+            recommended_usage = (
+                "Current release does not support deep inspection for this source. Provide a GitHub repository URL instead."
+            )
         return EvidenceCard(
             title=title,
             url=url,
             source_type=source_type,
-            relevance_reason=_shorten(item.task_fit_reason or item.why_recommended or item.readme_summary or "This inspected source was evaluated for the current query.", 180),
+            relevance_reason=_shorten(
+                item.task_fit_reason
+                or item.why_recommended
+                or item.readme_summary
+                or "This inspected source was evaluated for the current query.",
+                180,
+            ),
             usable_parts=usable_parts,
             risk_flags=risk_flags,
             recommended_usage=recommended_usage,
@@ -260,8 +314,14 @@ class ContextBuilder:
         source_type = self._normalize_source_type(item)
         usable_parts = self._infer_usable_parts_from_search(item)
         relevance_reason = self._build_relevance_reason_for_search(item)
-        risk_flags = infer_risk_flags(query, item, usable_parts)
-        recommended_usage = self._build_recommended_usage(usable_parts)
+        search_item = item.model_copy(update={"source_type": "github" if source_type == "github_repo" else source_type})
+        risk_flags = infer_risk_flags(query, search_item, usable_parts)
+        recommended_usage = self._build_recommended_usage(usable_parts, source_type=source_type)
+        if source_type == "unsupported_source":
+            recommended_usage = (
+                "Current release does not support deep inspection for this source. "
+                "Use it only as a low-confidence pointer and provide a GitHub repository URL instead."
+            )
         citation_hint = format_citation_hint(item.title, item.url)
         return EvidenceCard(
             title=item.title or item.repo or "Untitled resource",
@@ -278,13 +338,13 @@ class ContextBuilder:
     def _comparison_item_to_evidence_card(self, *, query: str, item: CompareCourseProjectsItem) -> EvidenceCard:
         title = item.repo or item.url or "Compared candidate"
         url = item.url or self._repo_to_url(item.repo)
-        source_type = "github_repo" if item.repo or "github.com" in (url or "").lower() else "unknown"
+        source_type = self._normalize_url_source_type(url or "")
         usable_parts = self._infer_usable_parts_from_comparison(item)
         pseudo_search_item = SearchResultItem(
             title=title,
             url=url or "",
             source="compare",
-            source_type="github" if source_type == "github_repo" else "unknown",
+            source_type="github" if source_type == "github_repo" else source_type,
             repo=item.repo,
             snippet=item.reason,
             explanation=item.reason,
@@ -296,28 +356,47 @@ class ContextBuilder:
         risk_flags = infer_risk_flags(query, pseudo_search_item, usable_parts)
         if source_type == "github_repo":
             risk_flags = unique_preserve_order(["not_official", *risk_flags])
+        recommended_usage = _shorten(
+            " ".join(unique_preserve_order([*item.best_for[:2], *item.suggested_usage[:1]]))
+            or self._build_recommended_usage(usable_parts, source_type=source_type),
+            180,
+        )
+        if source_type == "unsupported_source":
+            recommended_usage = (
+                "Current release does not support deep inspection for this source. Provide a GitHub repository URL instead."
+            )
         return EvidenceCard(
             title=title,
             url=url,
             source_type=source_type,
-            relevance_reason=_shorten(item.reason or "This candidate was included in a repository comparison for the current query.", 180),
+            relevance_reason=_shorten(
+                item.reason
+                or "This candidate was included in a repository comparison for the current query.",
+                180,
+            ),
             usable_parts=usable_parts,
             risk_flags=risk_flags,
-            recommended_usage=_shorten(" ".join(unique_preserve_order([*item.best_for[:2], *item.suggested_usage[:1]])) or self._build_recommended_usage(usable_parts), 180),
+            recommended_usage=recommended_usage,
             citation_hint=format_citation_hint(title, url),
             raw_score=item.score,
         )
 
     def _normalize_source_type(self, item: SearchResultItem) -> str:
         source_type = (item.source_type or "").lower()
-        url = (item.url or "").lower()
-        if "github" in source_type or "gitee" in source_type or "github.com" in url or "gitee.com" in url:
+        url = item.url or ""
+        if "github" in source_type or is_github_repo_url(url):
             return "github_repo"
-        if any(token in source_type for token in ["web", "page"]) or url.startswith("http"):
-            searchable = " ".join([item.title or "", item.snippet or "", item.explanation or ""]).lower()
-            if any(token in searchable for token in ["course material", "notes", "lecture", "实验", "课程"]):
-                return "course_material"
-            return "webpage"
+        if source_type == "unsupported_source":
+            return "unsupported_source"
+        if url.startswith(("http://", "https://")):
+            return "unsupported_source"
+        return "unknown"
+
+    def _normalize_url_source_type(self, url: str) -> str:
+        if is_github_repo_url(url):
+            return "github_repo"
+        if (url or "").startswith(("http://", "https://")):
+            return "unsupported_source"
         return "unknown"
 
     def _infer_usable_parts_from_search(self, item: SearchResultItem) -> list[str]:
@@ -386,15 +465,17 @@ class ContextBuilder:
             normalized = _shorten(candidate, 180)
             if normalized:
                 return normalized
-        return "This public learning reference appears relevant based on the available repository and course metadata."
+        return "This public GitHub learning reference appears relevant based on the available repository and course metadata."
 
-    def _build_recommended_usage(self, usable_parts: list[str]) -> str:
+    def _build_recommended_usage(self, usable_parts: list[str], *, source_type: str) -> str:
+        if source_type == "unsupported_source":
+            return "Current release does not support deep inspection for this source. Provide a GitHub repository URL instead."
         if usable_parts:
             return (
                 f"Use mainly for learning reference around {', '.join(usable_parts[:3])}; "
-                "keep the original source visible and verify details before answering."
+                "keep the original GitHub source visible and verify details before answering."
             )
-        return "Use as a high-level public learning reference, then inspect the repository or page before making detailed claims."
+        return "Use as a high-level public GitHub learning reference, then inspect the repository before making detailed claims."
 
     def _build_search_summary(
         self,
@@ -412,8 +493,8 @@ class ContextBuilder:
         top_titles = ", ".join(card.title for card in cards[:3])
         use_hint = f" Intended use: {intended_use}." if intended_use else ""
         return _shorten(
-            f"Found {len(cards)} public learning references for `{query}` out of {total_found} surfaced results. "
-            f"Top evidence includes {top_titles}.{use_hint} Treat these as non-official course references and cite the source when summarizing them.",
+            f"Found {len(cards)} public GitHub learning references for `{query}` out of {total_found} surfaced results. "
+            f"Top evidence includes {top_titles}.{use_hint} Treat these as non-official course references and cite the repository source when summarizing them.",
             420,
         )
 
@@ -442,7 +523,7 @@ class ContextBuilder:
             )
         use_hint = f" Intended use: {intended_use}." if intended_use else ""
         return _shorten(
-            f"Built context from {len(inspect_results)} inspected sources for `{query}`. "
+            f"Built context from {len(inspect_results)} inspected GitHub sources for `{query}`. "
             f"Inspected candidates: {inspected}.{parts_text}{use_hint}{compare_text}",
             420,
         )
@@ -454,12 +535,15 @@ class ContextBuilder:
         compare_result: CompareCourseProjectsOutput,
         intended_use: str | None,
     ) -> str:
-        best = compare_result.best_overall or "the current top candidate"
         comparison_count = len(compare_result.comparison)
         use_hint = f" Intended use: {intended_use}." if intended_use else ""
-        summary = compare_result.recommendation or compare_result.summary or f"`{best}` is the more suitable learning reference among the compared candidates."
+        summary = (
+            compare_result.recommendation
+            or compare_result.summary
+            or f"`{compare_result.best_overall or 'the current top candidate'}` is the more suitable learning reference among the compared candidates."
+        )
         return _shorten(
-            f"Comparison-ready context for `{query}` based on {comparison_count} candidates. "
+            f"Comparison-ready context for `{query}` based on {comparison_count} GitHub candidates. "
             f"Current recommendation: {summary}{use_hint} Keep the recommendation framed as learning-reference guidance, not as an official course conclusion.",
             420,
         )
@@ -474,10 +558,16 @@ class ContextBuilder:
         if not cards:
             return "No valid source URLs were provided for the context pack."
         titles = ", ".join(card.title for card in cards[:3])
+        unsupported_count = sum(1 for card in cards if card.source_type == "unsupported_source")
         use_hint = f" Intended use: {intended_use}." if intended_use else ""
+        unsupported_text = (
+            f" {unsupported_count} source(s) are outside the current GitHub-only support scope."
+            if unsupported_count
+            else ""
+        )
         return _shorten(
-            f"Built a preliminary context pack for `{query}` from {len(cards)} user-provided sources: {titles}.{use_hint} "
-            "These sources have not all been inspected yet, so the agent should keep confidence conservative.",
+            f"Built a preliminary context pack for `{query}` from {len(cards)} user-provided sources: {titles}.{use_hint}"
+            f"{unsupported_text} These sources have not all been inspected yet, so the agent should keep confidence conservative.",
             420,
         )
 
@@ -489,9 +579,10 @@ class ContextBuilder:
             return "compare_course_projects"
         if repo_count >= 1:
             return "inspect_course_project"
-        if looks_like_broad_query(query):
-            return "inspect_course_project"
         return None
+
+    def _suggest_next_tool_for_source_urls(self, cards: list[EvidenceCard]) -> str | None:
+        return "inspect_course_project" if any(card.source_type == "github_repo" for card in cards) else None
 
     def _suggest_next_tool_for_inspect(self, inspect_results: list[InspectCourseProjectOutput]) -> str | None:
         if len(inspect_results) >= 2:
@@ -539,8 +630,9 @@ class ContextBuilder:
     ) -> str:
         note_parts = [
             SAFETY_NOTE_TEXT,
-            "These are public learning references, not official course conclusions.",
+            "These are public GitHub learning references, not official course conclusions.",
             "Code, reports, labs, or assignments must not be copied directly for submission.",
+            "Non-GitHub URLs are not deeply inspected in the current release and should be treated as unsupported_source.",
         ]
         if compare_output and compare_output.safety_note:
             note_parts.append(compare_output.safety_note)
@@ -582,9 +674,7 @@ class ContextBuilder:
         normalized = (repo or "").strip()
         if not normalized:
             return None
-        if normalized.startswith("http://") or normalized.startswith("https://"):
-            return normalized
-        return f"https://github.com/{normalized}"
+        return canonical_github_repo_url(normalized)
 
     def _to_output(self, card: EvidenceCard) -> EvidenceCardOutput:
         return EvidenceCardOutput(**card.model_dump())

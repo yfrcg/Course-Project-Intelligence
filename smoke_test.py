@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from app.schemas import SearchCourseProjectsInput, SearchCourseProjectsOutput, SearchResultItem
 from app.server import create_mcp_server
 from app.tool_metadata import (
     AGENT_CONTEXT_TOOL_NAME,
@@ -15,7 +16,13 @@ from app.tool_metadata import (
     CORE_TOOL_PARAM_DESCRIPTION_FIELDS,
 )
 from app.tools import course_tools
-from app.schemas import SearchCourseProjectsInput, SearchCourseProjectsOutput, SearchResultItem
+
+
+DISALLOWED_SUPPORT_PHRASES = [
+    "generic web",
+    "ordinary webpage",
+    "school website",
+]
 
 
 def _format_ok(ok: bool) -> str:
@@ -58,29 +65,19 @@ def main() -> None:
         print(f"  missing: {missing_terms or ['<none>']}")
         if missing_terms:
             raise RuntimeError(f"{tool_name} description missing expected trigger terms: {missing_terms}")
-
-    resource_meta = tools["search_course_resources"].meta or {}
-    print("\nAlias metadata:")
-    print(f"- search_course_resources meta: {resource_meta}")
-    if resource_meta.get("alias_of") != "search_course_projects":
-        raise RuntimeError(
-            "search_course_resources alias metadata is invalid. "
-            f"Expected alias_of=search_course_projects, got {resource_meta!r}"
-        )
+        bad_terms = [phrase for phrase in DISALLOWED_SUPPORT_PHRASES if phrase in description]
+        if bad_terms:
+            raise RuntimeError(f"{tool_name} description still contains unsupported web phrasing: {bad_terms}")
 
     print("\nSchema parameter description checks:")
     for tool_name, field_names in CORE_TOOL_PARAM_DESCRIPTION_FIELDS.items():
         properties = tools[tool_name].parameters.get("properties", {})
         missing_fields = []
-        field_statuses = []
         for field_name in field_names:
             field_schema = properties.get(field_name) or {}
-            has_description = bool(field_schema.get("description"))
-            field_statuses.append(f"{field_name}={_format_ok(has_description)}")
-            if not has_description:
+            if not field_schema.get("description"):
                 missing_fields.append(field_name)
-        print(f"- {tool_name}: {_format_ok(not missing_fields)} (checked {', '.join(field_names)})")
-        print(f"  fields: {field_statuses}")
+        print(f"- {tool_name}: {_format_ok(not missing_fields)}")
         if missing_fields:
             raise RuntimeError(f"{tool_name} schema is missing parameter descriptions for: {missing_fields}")
 
@@ -103,14 +100,15 @@ def main() -> None:
                     reference_utility=["lab workflow reference", "report structure reference"],
                 ),
                 SearchResultItem(
-                    title="OS Course Notes",
-                    url="https://example.edu/os-notes",
-                    source="web",
-                    source_type="web",
-                    snippet="Public notes and lab summaries.",
-                    explanation="Useful for overview and notes review.",
-                    confidence=0.61,
-                    score=0.57,
+                    title="Operating System Notes Repo",
+                    url="https://github.com/example/os-notes",
+                    source="github",
+                    source_type="github",
+                    repo="example/os-notes",
+                    snippet="Includes notes and README guidance.",
+                    explanation="Useful for notes review and topic scoping.",
+                    confidence=0.74,
+                    score=0.79,
                     reference_utility=["notes review"],
                 ),
             ],
@@ -118,82 +116,52 @@ def main() -> None:
 
     import anyio
 
-    async def _sample_context_check() -> None:
+    async def _sample_checks() -> None:
         original_search = course_tools.service.search_course_projects
         course_tools.service.search_course_projects = fake_search
         try:
-            query_only_search_results = await fake_search(SearchCourseProjectsInput(query="operating system course materials"))
-            workflow_cases = [
-                ("query_only", {"query": "operating system course materials", "max_sources": 2, "intended_use": "study guidance"}),
-                (
-                    "source_urls",
-                    {
-                        "query": "analyze these operating system repositories",
-                        "source_urls": [
-                            "https://github.com/example/os-lab",
-                            "https://github.com/example/os-notes",
-                        ],
-                        "max_sources": 2,
-                    },
-                ),
-                (
-                    "search_results",
-                    {
-                        "query": "operating system course materials",
-                        "search_results": [result.model_dump(mode="json") for result in query_only_search_results.results],
-                        "max_sources": 2,
-                    },
-                ),
-                (
-                    "inspect_results",
-                    {
-                        "query": "this repo fits OS lab learning",
-                        "inspect_results": [
-                            {
-                                "repo": "example/os-lab",
-                                "url": "https://github.com/example/os-lab",
-                                "fit_for_query": "high",
-                                "task_fit_reason": "Contains lab report, src, and README notes for OS lab workflow.",
-                                "suggested_usage": ["lab workflow reference", "report structure reference"],
-                                "detected_assets": {"has_report": True, "has_src": True, "has_lab": True},
-                                "reference_utility": ["lab workflow reference"],
-                            }
-                        ],
-                    },
-                ),
-                (
-                    "compare_result",
-                    {
-                        "query": "which OS repository is better",
-                        "compare_result": {
-                            "best_overall": "example/os-lab",
-                            "recommendation": "`example/os-lab` is more suitable as a learning reference.",
-                            "comparison": [
-                                {
-                                    "repo": "example/os-lab",
-                                    "url": "https://github.com/example/os-lab",
-                                    "reason": "Better lab workflow and report coverage.",
-                                    "best_for": ["lab workflow"],
-                                    "suggested_usage": ["report structure reference"],
-                                    "detected_assets": {"has_report": True, "has_src": True},
-                                }
-                            ],
-                        },
-                    },
-                ),
-            ]
+            query_only = await course_tools.build_course_context_tool(
+                query="operating system github lab repositories",
+                max_sources=2,
+            )
+            github_sources = await course_tools.build_course_context_tool(
+                query="analyze these repositories",
+                source_urls=[
+                    "https://github.com/example/os-lab",
+                    "github.com/example/os-notes",
+                ],
+                max_sources=2,
+            )
+            unsupported_sources = await course_tools.build_course_context_tool(
+                query="analyze this course page",
+                source_urls=["https://example.edu/course/os"],
+                max_sources=1,
+            )
+            unsupported_inspect = await course_tools.inspect_course_project_tool(
+                repo="https://example.edu/course/os",
+                query="operating system course page",
+            )
 
-            print("\nSample build_course_context output checks:")
-            for case_name, kwargs in workflow_cases:
-                context_pack = await course_tools.build_course_context_tool(**kwargs)
-                print(f"- {case_name}: {_format_ok(bool(context_pack.summary_for_agent and context_pack.evidence_cards and context_pack.safety_note and context_pack.agent_usage_guidance))}")
-                print(f"  suggested_next_tool={context_pack.suggested_next_tool!r}")
-                if not context_pack.summary_for_agent or not context_pack.evidence_cards or not context_pack.safety_note or not context_pack.agent_usage_guidance:
-                    raise RuntimeError(f"build_course_context `{case_name}` path is missing one or more required structured fields.")
+            if not query_only.evidence_cards or query_only.evidence_cards[0].source_type != "github_repo":
+                raise RuntimeError("query_only build_course_context did not produce GitHub evidence cards.")
+            if github_sources.suggested_next_tool != "inspect_course_project":
+                raise RuntimeError("GitHub source_urls should recommend inspect_course_project.")
+            if unsupported_sources.evidence_cards[0].source_type != "unsupported_source":
+                raise RuntimeError("Non-GitHub source_urls should be marked as unsupported_source.")
+            if "low_confidence" not in unsupported_sources.evidence_cards[0].risk_flags:
+                raise RuntimeError("Non-GitHub source_urls should include low_confidence.")
+            if unsupported_sources.suggested_next_tool is not None:
+                raise RuntimeError("Non-GitHub source_urls should not recommend inspect_course_project.")
+            if not unsupported_inspect.error or "unsupported_source" not in unsupported_inspect.error:
+                raise RuntimeError("inspect_course_project should reject non-GitHub URLs with unsupported_source.")
         finally:
             course_tools.service.search_course_projects = original_search
 
-    anyio.run(_sample_context_check)
+    anyio.run(_sample_checks)
+
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    if 'version = "1.0.0rc1"' not in pyproject:
+        raise RuntimeError("pyproject.toml version changed unexpectedly.")
 
     print("\npassed")
 

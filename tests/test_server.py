@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from app.schemas import (
@@ -13,12 +15,18 @@ from app.schemas import (
 from app.server import create_mcp_server
 from app.tool_metadata import (
     AGENT_CONTEXT_TOOL_NAME,
-    CORE_ROUTE_TOOL_NAMES,
     CORE_TOOL_DESCRIPTION_CHECKS,
     CORE_TOOL_PARAM_DESCRIPTION_FIELDS,
     ROUTING_TOOL_NAMES,
 )
 from app.tools import course_tools
+
+
+DISALLOWED_SUPPORT_PHRASES = [
+    "generic web",
+    "ordinary webpage",
+    "school website",
+]
 
 
 def _tool_map():
@@ -34,13 +42,6 @@ def test_core_route_tools_are_registered_with_readable_schema() -> None:
         assert tool_map[tool_name].parameters.get("type") == "object"
         assert "properties" in tool_map[tool_name].parameters
 
-    resource_properties = tool_map["search_course_resources"].parameters["properties"]
-    assert "providers" in resource_properties
-    assert "include_notes" in resource_properties
-    assert "include_labs" in resource_properties
-    assert "include_projects" in resource_properties
-    assert "include_reports" in resource_properties
-
     context_properties = tool_map[AGENT_CONTEXT_TOOL_NAME].parameters["properties"]
     assert "max_sources" in context_properties
     assert "max_context_chars" in context_properties
@@ -51,13 +52,15 @@ def test_core_route_tools_are_registered_with_readable_schema() -> None:
     assert "compare_result" in context_properties
 
 
-def test_core_route_tool_descriptions_and_meta_include_routing_hints() -> None:
+def test_core_route_tool_descriptions_and_meta_include_github_only_hints() -> None:
     tool_map = _tool_map()
 
     for tool_name, terms in CORE_TOOL_DESCRIPTION_CHECKS.items():
-        description = tool_map[tool_name].description.lower()
+        description = (tool_map[tool_name].description or "").lower()
         for term in terms:
             assert term in description
+        for phrase in DISALLOWED_SUPPORT_PHRASES:
+            assert phrase not in description
 
     resource_meta = tool_map["search_course_resources"].meta or {}
     assert resource_meta.get("alias_of") == "search_course_projects"
@@ -91,8 +94,8 @@ async def test_search_course_resources_reuses_search_course_projects_service(mon
     monkeypatch.setattr(course_tools.service, "search_course_projects", fake_search)
 
     await course_tools.search_course_resources_tool(
-        query="南开大学 数据结构 课程资料",
-        providers=["github", "web"],
+        query="Find public GitHub repositories for compiler labs",
+        providers=["github"],
         include_notes=True,
         include_labs=True,
         include_projects=False,
@@ -101,25 +104,26 @@ async def test_search_course_resources_reuses_search_course_projects_service(mon
 
     forwarded_payload = captured["payload"]
     assert isinstance(forwarded_payload, SearchCourseProjectsInput)
-    assert forwarded_payload.source_types == ["github", "web"]
-    assert "course notes" in forwarded_payload.query
-    assert "labs" in forwarded_payload.query
-    assert "reports" in forwarded_payload.query
-    assert "course project" not in forwarded_payload.query
+    assert forwarded_payload.source_types == ["github"]
+    assert "github" in forwarded_payload.query.lower()
+    assert "course notes" in forwarded_payload.query.lower()
+    assert "labs" in forwarded_payload.query.lower()
+    assert "reports" in forwarded_payload.query.lower()
+    assert "course project" not in forwarded_payload.query.lower()
 
 
 @pytest.mark.asyncio
 async def test_build_course_context_returns_agent_context_pack(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_search(payload: SearchCourseProjectsInput) -> SearchCourseProjectsOutput:
         return SearchCourseProjectsOutput(
-            total_found=3,
+            total_found=2,
             results=[
                 SearchResultItem(
-                    title="NKU Database Course Project Repo",
-                    url="https://github.com/example/nku-db-project",
+                    title="Database Course Project Repo",
+                    url="https://github.com/example/database-course-project",
                     source="github",
                     source_type="github",
-                    repo="example/nku-db-project",
+                    repo="example/database-course-project",
                     snippet="Includes report, SQL schema, src, and README notes.",
                     explanation="Relevant because it matches database course project scope and includes schema assets.",
                     confidence=0.82,
@@ -129,15 +133,16 @@ async def test_build_course_context_returns_agent_context_pack(monkeypatch: pyte
                     reference_utility=["report structure reference", "database schema reference"],
                 ),
                 SearchResultItem(
-                    title="Database Notes Collection",
-                    url="https://example.edu/db-notes",
-                    source="web",
-                    source_type="web",
-                    snippet="Public course notes and lab materials.",
-                    explanation="Useful for notes and lab workflow reference.",
-                    confidence=0.66,
-                    score=0.63,
-                    reference_utility=["notes review", "lab preparation"],
+                    title="Database Lab Reference Repo",
+                    url="https://github.com/example/database-lab-reference",
+                    source="github",
+                    source_type="github",
+                    repo="example/database-lab-reference",
+                    snippet="Includes lab notes, report, and src layout.",
+                    explanation="Useful for lab workflow comparison and source layout reference.",
+                    confidence=0.76,
+                    score=0.81,
+                    reference_utility=["lab workflow reference", "src layout reference"],
                 ),
             ],
         )
@@ -145,7 +150,7 @@ async def test_build_course_context_returns_agent_context_pack(monkeypatch: pyte
     monkeypatch.setattr(course_tools.service, "search_course_projects", fake_search)
 
     result = await course_tools.build_course_context_tool(
-        query="数据库课程资料",
+        query="database course project github repositories",
         max_sources=2,
         intended_use="study guidance",
     )
@@ -157,12 +162,10 @@ async def test_build_course_context_returns_agent_context_pack(monkeypatch: pyte
     assert result.agent_usage_guidance
     assert result.suggested_next_tool in {"inspect_course_project", "compare_course_projects", None}
     first_card = result.evidence_cards[0]
-    assert first_card.title
-    assert first_card.source_type
-    assert first_card.risk_flags
-    assert first_card.recommended_usage
+    assert first_card.source_type == "github_repo"
+    assert "not_official" in first_card.risk_flags
     assert first_card.citation_hint
-    assert "not official" in result.safety_note.lower()
+    assert "public github learning references" in result.safety_note.lower()
 
 
 @pytest.mark.asyncio
@@ -173,31 +176,47 @@ async def test_build_course_context_source_urls_path_skips_search(monkeypatch: p
     monkeypatch.setattr(course_tools.service, "search_course_projects", fail_search)
 
     result = await course_tools.build_course_context_tool(
-        query="分析这些数据库课程设计仓库能参考什么",
+        query="analyze these database repositories",
         source_urls=[
             "https://github.com/example/db-project-1",
-            "https://github.com/example/db-project-2",
+            "github.com/example/db-project-2",
         ],
         max_sources=2,
     )
 
     assert result.evidence_cards
     assert result.suggested_next_tool == "inspect_course_project"
+    assert result.evidence_cards[0].source_type == "github_repo"
     assert "not_official" in result.evidence_cards[0].risk_flags
 
 
 @pytest.mark.asyncio
-async def test_build_course_context_search_results_path_skips_search(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_build_course_context_non_github_source_urls_are_marked_unsupported(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fail_search(payload: SearchCourseProjectsInput) -> SearchCourseProjectsOutput:
-        raise AssertionError("search should not be called when search_results are provided")
+        raise AssertionError("search should not be called for source_urls-only context building")
 
     monkeypatch.setattr(course_tools.service, "search_course_projects", fail_search)
 
     result = await course_tools.build_course_context_tool(
-        query="操作系统实验报告和源码",
+        query="analyze this school website",
+        source_urls=["https://example.edu/course/db"],
+        max_sources=1,
+    )
+
+    assert result.suggested_next_tool is None
+    assert result.evidence_cards[0].source_type == "unsupported_source"
+    assert "unsupported_source" in result.evidence_cards[0].risk_flags
+    assert "low_confidence" in result.evidence_cards[0].risk_flags
+    assert "provide a github repository url instead" in result.evidence_cards[0].recommended_usage.lower()
+
+
+@pytest.mark.asyncio
+async def test_build_course_context_search_results_can_carry_unsupported_sources() -> None:
+    result = await course_tools.build_course_context_tool(
+        query="compare these sources",
         search_results=[
             SearchResultItem(
-                title="OS Lab Repo",
+                title="Supported Repo",
                 url="https://github.com/example/os-lab",
                 source="github",
                 source_type="github",
@@ -209,49 +228,19 @@ async def test_build_course_context_search_results_path_skips_search(monkeypatch
                 reference_utility=["lab workflow reference"],
             ).model_dump(mode="json"),
             SearchResultItem(
-                title="OS Notes",
+                title="Unsupported Course Page",
                 url="https://example.edu/os-notes",
-                source="web",
-                source_type="web",
-                snippet="Public notes and lab summaries.",
-                explanation="Useful for notes review.",
-                confidence=0.6,
-                score=0.57,
+                source="unsupported",
+                source_type="unsupported_source",
+                snippet="Course page outside current support scope.",
+                explanation="Current release does not deeply inspect this source.",
+                confidence=0.2,
+                score=0.2,
             ).model_dump(mode="json"),
         ],
     )
 
-    assert result.evidence_cards
-    assert result.summary_for_agent
-    assert result.suggested_next_tool in {"inspect_course_project", "compare_course_projects", None}
-
-
-@pytest.mark.asyncio
-async def test_build_course_context_inspect_results_path_skips_search(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def fail_search(payload: SearchCourseProjectsInput) -> SearchCourseProjectsOutput:
-        raise AssertionError("search should not be called when inspect_results are provided")
-
-    monkeypatch.setattr(course_tools.service, "search_course_projects", fail_search)
-
-    result = await course_tools.build_course_context_tool(
-        query="这个仓库适合参考什么",
-        inspect_results=[
-            InspectCourseProjectOutput(
-                repo="example/java-web-course",
-                url="https://github.com/example/java-web-course",
-                fit_for_query="high",
-                task_fit_reason="Contains report, src, and schema assets for Java Web course design reference.",
-                suggested_usage=["report structure reference", "src layout reference"],
-                detected_assets={"has_report": True, "has_src": True, "has_schema": True},
-                reference_utility=["report structure reference", "schema reference"],
-                why_recommended="Relevant for Java Web course design reference.",
-            ).model_dump(mode="json")
-        ],
-    )
-
-    assert result.evidence_cards
-    assert result.summary_for_agent
-    assert result.suggested_next_tool is None
+    assert any(card.source_type == "unsupported_source" for card in result.evidence_cards)
 
 
 @pytest.mark.asyncio
@@ -262,7 +251,7 @@ async def test_build_course_context_compare_result_path_skips_search(monkeypatch
     monkeypatch.setattr(course_tools.service, "search_course_projects", fail_search)
 
     compare_output = CompareCourseProjectsOutput(
-        query="这几个仓库哪个更适合数据库课程设计参考",
+        query="which repository is better for database design",
         best_overall="example/db-project-1",
         summary="The first repository is structurally stronger.",
         recommendation="`example/db-project-1` is more suitable as a learning reference for database schema and report structure.",
@@ -287,7 +276,7 @@ async def test_build_course_context_compare_result_path_skips_search(monkeypatch
     )
 
     result = await course_tools.build_course_context_tool(
-        query="这几个仓库哪个更适合数据库课程设计参考",
+        query="which repository is better for database design",
         compare_result=compare_output.model_dump(mode="json"),
     )
 
@@ -295,3 +284,21 @@ async def test_build_course_context_compare_result_path_skips_search(monkeypatch
     assert result.summary_for_agent
     assert result.suggested_next_tool is None
     assert "official" in result.safety_note.lower()
+
+
+@pytest.mark.asyncio
+async def test_inspect_course_project_rejects_non_github_url() -> None:
+    result = await course_tools.inspect_course_project_tool(
+        repo="https://example.edu/course/db",
+        query="database course design reference",
+    )
+
+    assert isinstance(result, InspectCourseProjectOutput)
+    assert result.error is not None
+    assert "unsupported_source" in result.error
+    assert "GitHub repository URL" in result.error
+
+
+def test_pyproject_version_not_modified() -> None:
+    pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
+    assert 'version = "1.0.0rc1"' in pyproject

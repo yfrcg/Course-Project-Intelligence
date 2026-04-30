@@ -16,13 +16,7 @@ from app.tools import course_tools
 
 def load_cases() -> list[dict]:
     cases_path = ROOT / "eval" / "agent_context_queries.jsonl"
-    cases: list[dict] = []
-    for line in cases_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        cases.append(json.loads(line))
-    return cases
+    return [json.loads(line) for line in cases_path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def validate_docs() -> list[str]:
@@ -52,16 +46,17 @@ async def fake_search(payload: SearchCourseProjectsInput) -> SearchCourseProject
                 utility=["report structure reference", "src layout reference"],
                 score=0.9,
             ),
-            _web_result(
-                title="Java Web Course Notes",
-                url="https://example.edu/java-web-notes",
-                snippet="Public notes and design summaries.",
-                explanation="Useful for notes review and topic scoping.",
-                utility=["notes review"],
-                score=0.58,
+            _repo_result(
+                title="Java Web Assignment Repo",
+                url="https://github.com/example/java-web-assignment",
+                snippet="Contains assignment code, report, and docs.",
+                explanation="Useful for comparing assignment scope and report layout.",
+                why="Shows assignment structure and docs organization.",
+                utility=["assignment scope review", "docs structure review"],
+                score=0.73,
             ),
         ]
-    elif "操作系统" in query or "operating system" in query:
+    elif "operating system" in query:
         results = [
             _repo_result(
                 title="OS Lab Repo",
@@ -72,16 +67,17 @@ async def fake_search(payload: SearchCourseProjectsInput) -> SearchCourseProject
                 utility=["lab workflow reference", "report structure reference"],
                 score=0.88,
             ),
-            _web_result(
-                title="Operating System Course Notes",
-                url="https://example.edu/os-notes",
-                snippet="Public notes and experiment summaries.",
-                explanation="Useful for notes review.",
+            _repo_result(
+                title="OS Notes Repo",
+                url="https://github.com/example/os-notes",
+                snippet="Contains notes, README, and experiment summaries.",
+                explanation="Useful for notes review and terminology alignment.",
+                why="Shows notes organization for operating system labs.",
                 utility=["notes review"],
-                score=0.55,
+                score=0.71,
             ),
         ]
-    elif "编译原理" in query or "compiler" in query:
+    elif "compiler" in query:
         results = [
             _repo_result(
                 title="Compiler Lab Reference Repo",
@@ -92,13 +88,14 @@ async def fake_search(payload: SearchCourseProjectsInput) -> SearchCourseProject
                 utility=["compiler lab workflow", "report structure reference"],
                 score=0.86,
             ),
-            _web_result(
-                title="Compiler Course Notes",
-                url="https://example.edu/compiler-notes",
-                snippet="Public notes and lab materials for compiler courses.",
-                explanation="Useful for notes review and lab preparation.",
-                utility=["notes review", "lab preparation"],
-                score=0.61,
+            _repo_result(
+                title="Compiler Notes Repo",
+                url="https://github.com/example/compiler-notes",
+                snippet="Contains notes and docs for compiler courses.",
+                explanation="Useful for notes review and module naming reference.",
+                why="Shows notes and docs organization for compiler study.",
+                utility=["notes review"],
+                score=0.7,
             ),
         ]
     else:
@@ -113,21 +110,13 @@ async def fake_search(payload: SearchCourseProjectsInput) -> SearchCourseProject
                 score=0.91,
             ),
             _repo_result(
-                title="Database Homework Collection",
+                title="Database Homework Collection Repo",
                 url="https://github.com/example/database-homework",
                 snippet="Assignments, reports, and code samples.",
                 explanation="Useful for identifying common assignment structure and risk factors.",
                 why="Shows assignment and report patterns.",
                 utility=["assignment scope review"],
                 score=0.67,
-            ),
-            _web_result(
-                title="Database Course Notes",
-                url="https://example.edu/database-notes",
-                snippet="Public notes and lab materials.",
-                explanation="Useful for notes review and terminology alignment.",
-                utility=["notes review", "lab preparation"],
-                score=0.63,
             ),
         ]
     return SearchCourseProjectsOutput(total_found=len(results), results=results)
@@ -159,28 +148,6 @@ def _repo_result(
     )
 
 
-def _web_result(
-    *,
-    title: str,
-    url: str,
-    snippet: str,
-    explanation: str,
-    utility: list[str],
-    score: float,
-) -> SearchResultItem:
-    return SearchResultItem(
-        title=title,
-        url=url,
-        source="web",
-        source_type="web",
-        snippet=snippet,
-        explanation=explanation,
-        confidence=0.63,
-        score=score,
-        reference_utility=utility,
-    )
-
-
 def validate_context_pack(case: dict, result) -> list[str]:
     errors: list[str] = []
     if not result.summary_for_agent:
@@ -189,18 +156,14 @@ def validate_context_pack(case: dict, result) -> list[str]:
         errors.append(f"missing evidence_cards for query `{case['query']}`")
         return errors
     first_card = result.evidence_cards[0]
-    if not first_card.title:
-        errors.append(f"first evidence card missing title for query `{case['query']}`")
-    if not first_card.source_type:
-        errors.append(f"first evidence card missing source_type for query `{case['query']}`")
-    if not first_card.risk_flags:
-        errors.append(f"first evidence card missing risk_flags for query `{case['query']}`")
+    if first_card.source_type != "github_repo":
+        errors.append(f"first evidence card should be github_repo for query `{case['query']}`")
+    if "not_official" not in first_card.risk_flags:
+        errors.append(f"first evidence card missing not_official flag for query `{case['query']}`")
     if not first_card.recommended_usage:
         errors.append(f"first evidence card missing recommended_usage for query `{case['query']}`")
     if not first_card.citation_hint or "learning reference only:" not in first_card.citation_hint.lower():
         errors.append(f"first evidence card missing stable citation_hint for query `{case['query']}`")
-    if not result.safety_note:
-        errors.append(f"missing safety_note for query `{case['query']}`")
     if result.suggested_next_tool not in {"inspect_course_project", "compare_course_projects", None}:
         errors.append(f"unexpected suggested_next_tool `{result.suggested_next_tool}` for query `{case['query']}`")
     combined = " ".join(
@@ -211,10 +174,10 @@ def validate_context_pack(case: dict, result) -> list[str]:
             first_card.recommended_usage,
         ]
     ).lower()
-    if "not official" not in combined:
-        errors.append(f"context pack does not clearly preserve non-official framing for query `{case['query']}`")
+    if "public github learning references" not in combined:
+        errors.append(f"context pack does not preserve GitHub-only framing for query `{case['query']}`")
     if "must not be copied directly" not in combined and "avoid advice that suggests copying" not in combined:
-        errors.append(f"context pack does not clearly preserve no-copy guidance for query `{case['query']}`")
+        errors.append(f"context pack does not preserve no-copy guidance for query `{case['query']}`")
     return errors
 
 

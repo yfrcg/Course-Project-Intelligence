@@ -14,13 +14,13 @@ SAFETY_NOTE_TEXT = (
 class SearchCourseProjectsInput(BaseModel):
     query: str = Field(
         ...,
-        description="Natural-language query for university CS course resources, projects, labs, notes, assignments, reports, or repositories.",
+        description="Natural-language query for public GitHub repositories related to university CS course projects, labs, notes, assignments, reports, SQL or schema assets, or course design references.",
     )
     school: Optional[str] = Field(default=None, description="Optional school constraint.")
     course: Optional[str] = Field(default=None, description="Optional course constraint.")
     source_types: List[str] = Field(
         default_factory=list,
-        description="Optional source filters such as github, gitee, or web.",
+        description="Optional source filters. The current stable value is github.",
     )
     top_k: int = Field(default=5, ge=1, le=20, description="Number of results to return.")
     freshness: Optional[str] = Field(default=None, description="Optional freshness hint.")
@@ -31,13 +31,13 @@ class SearchCourseProjectsInput(BaseModel):
 class SearchCourseResourcesInput(BaseModel):
     query: str = Field(
         ...,
-        description="Broad natural-language query for university CS course resources or study materials.",
+        description="Broad natural-language query for GitHub-hosted university CS course repositories, labs, notes, assignments, reports, or study materials.",
     )
     school: Optional[str] = Field(default=None, description="Optional school constraint.")
     course: Optional[str] = Field(default=None, description="Optional course constraint.")
     providers: List[str] = Field(
         default_factory=list,
-        description="Optional provider filters such as github, gitee, or web.",
+        description="Optional provider filters. The current stable value is github.",
     )
     top_k: int = Field(default=5, ge=1, le=20, description="Number of results to return.")
     include_notes: bool = Field(default=True, description="Whether to bias toward notes and study materials.")
@@ -52,7 +52,7 @@ class SearchCourseResourcesInput(BaseModel):
 class BuildCourseContextInput(BaseModel):
     query: str = Field(
         ...,
-        description="User question about course resources, course projects, or learning references that the agent wants to turn into a structured evidence pack.",
+        description="User question about GitHub course project repositories or learning references that the agent wants to turn into a structured evidence pack.",
     )
     max_sources: int = Field(default=5, ge=1, le=10, description="Maximum number of evidence cards to keep in the context pack.")
     max_context_chars: int = Field(default=6000, ge=1200, le=20000, description="Maximum approximate character budget for the structured context pack.")
@@ -62,7 +62,7 @@ class BuildCourseContextInput(BaseModel):
     )
     source_urls: Optional[List[str]] = Field(
         default=None,
-        description="Optional known repository or webpage URLs that should be turned into evidence cards without requiring a fresh search.",
+        description="Optional known GitHub repository URLs that should be turned into evidence cards without requiring a fresh search. Non-GitHub URLs are marked as unsupported_source.",
     )
     search_results: Optional[List[Dict[str, Any]]] = Field(
         default=None,
@@ -156,7 +156,7 @@ class CourseContextPackOutput(BaseModel):
 
 
 class GetProjectBriefInput(BaseModel):
-    url: str = Field(..., description="Public project or web page URL.")
+    url: str = Field(..., description="Public GitHub repository URL.")
 
 
 class CitationItem(BaseModel):
@@ -256,7 +256,7 @@ class ProviderSearchResult(BaseModel):
 
 
 class InspectCourseProjectInput(BaseModel):
-    repo: str = Field(..., description="GitHub repository in owner/name form.")
+    repo: str = Field(..., description="GitHub repository in owner/name form or GitHub repository URL.")
     query: Optional[str] = Field(
         default=None,
         description="Optional user task context used to judge fit_for_query without re-running search.",
@@ -307,7 +307,7 @@ class CompareCourseProjectsInput(BaseModel):
         ...,
         min_length=2,
         max_length=5,
-        description="GitHub repositories in owner/name form to compare as candidate learning references.",
+        description="GitHub repositories in owner/name form or GitHub repository URLs to compare as candidate learning references.",
     )
     query: Optional[str] = Field(
         default=None,

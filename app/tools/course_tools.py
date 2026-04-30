@@ -74,13 +74,13 @@ def _build_course_resources_query(
 ) -> str:
     hints: list[str] = []
     if include_notes:
-        hints.extend(["course notes", "study materials"])
+        hints.extend(["course notes", "study materials", "github"])
     if include_labs:
-        hints.extend(["labs", "experiment repository"])
+        hints.extend(["labs", "public github repository"])
     if include_projects:
-        hints.extend(["course project", "final assignment"])
+        hints.extend(["course project", "assignment repository"])
     if include_reports:
-        hints.extend(["reports", "writeup"])
+        hints.extend(["reports", "writeup", "readme"])
     return " ".join(unique_preserve_order([query.strip(), *hints])).strip()
 
 

@@ -2,175 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on Keep a Changelog and this project follows Semantic Versioning.
-
 ## [Unreleased]
 
-### v1.4 agent-workflow-closure / context-from-known-sources / release-readiness
-
-#### Added
-- Support for `build_course_context` from known `source_urls`
-- Support for `build_course_context` from existing `search_results`
-- Support for `build_course_context` from existing `inspect_results`
-- Support for `build_course_context` from existing `compare_result`
-- Final `docs/agent-workflow.md` for the closed-loop agent workflow
-- Workflow closure eval fixtures and `eval/run_workflow_eval.py`
+### v1.5 github-only-scope-freeze / release-polish
 
 #### Changed
-- `build_course_context` now closes the workflow across search, inspect, compare, and known-source inputs while keeping the same output contract
-- ContextBuilder now normalizes search, inspect, compare, and provided-source inputs into the same EvidenceCard workflow
-- README, routing docs, and examples now consistently describe the five-tool workflow and final agent-facing context pack
-- Smoke coverage now validates query-only, `source_urls`, `search_results`, `inspect_results`, and `compare_result` paths
 
-#### Compatibility
-- Preserved compatibility for `search_course_projects`, `search_course_resources`, `inspect_course_project`, `compare_course_projects`, and `build_course_context`
-- Preserved `search_course_resources` as a wrapper over `search_course_projects`
-- Preserved `build_course_context` as an Agent Context Pack layer rather than a new search engine
-
-### v1.3 agent-context-pack / evidence-card / context-builder
+- Scoped official support to GitHub public repositories
+- Preserved the 5 MCP tools and kept their names compatible
+- Repositioned `search_course_projects` and `search_course_resources` to GitHub-only discovery
+- Repositioned `inspect_course_project` to GitHub repository inspection only
+- Repositioned `compare_course_projects` to GitHub repository comparison only
+- Repositioned `build_course_context` to GitHub Evidence Pack assembly only
 
 #### Added
-- Agent Context Pack layer for AI agents and MCP hosts
-- `EvidenceCard` schema and `CourseContextPack` output contract
-- `ContextBuilder` with evidence-card packaging and context-size control
-- Lightweight `risk_flags` and `citation_hint` generation
-- `build_course_context` MCP tool
-- `docs/agent-context-pack.md`
-- Agent-context eval fixtures and `eval/run_agent_context_eval.py`
 
-#### Changed
-- README now documents Agent Context Pack usage and `build_course_context`
-- Tool routing guide now explains when to prefer `build_course_context`
-- Smoke coverage now checks `build_course_context` registration, schema, and sample structured output
+- Lightweight GitHub URL validation
+- Clear non-GitHub rejection path for `inspect_course_project`
+- `unsupported_source` handling for non-GitHub `source_urls`
+- Conservative `unsupported_source` and `low_confidence` evidence-card behavior for unsupported URLs
 
-#### Compatibility
-- Preserved compatibility for `search_course_projects`, `search_course_resources`, `inspect_course_project`, and `compare_course_projects`
+#### Docs
 
-### v1.2 host-adoption / prompt-cookbook / routing-diagnostics
+- Updated README to GitHub-only positioning
+- Updated routing, workflow, context-pack, diagnostics, examples, and eval docs to GitHub-only language
+- Removed or downgraded generic web resource claims from the main release path
 
-#### Added
-- Prompt cookbook examples for natural-language tool triggering
-- Host test prompts for Trae, Claude Code, Cursor, and generic MCP hosts
-- Routing diagnostics documentation for host adoption troubleshooting
-- Expanded routing eval queries covering broader host-adoption scenarios
+#### Eval / Smoke / Tests
 
-#### Changed
-- Smoke outputs are now more readable and report discovered tools, keyword checks, alias metadata, and schema-description checks
-- README now links prompt cookbook, host test prompts, routing diagnostics, and recommended host-adoption prompts
+- Updated eval fixtures to GitHub-only repository scenarios
+- Added non-GitHub unsupported cases to workflow validation
+- Updated smoke and pytest coverage for GitHub-only descriptions and unsupported URL handling
 
 #### Compatibility
-- Preserved compatibility for `search_course_projects`, `search_course_resources`, `inspect_course_project`, and `compare_course_projects`
 
-### Added
-- Release notes for `v1.0-rc1`
-- Release checklist for `v1.0-rc1`
-- Expanded eval documentation covering search / inspect / compare, school scope, course profiles, course-specific assets, and safety checks
-- `search_course_resources` as a broader alias-style wrapper over `search_course_projects`
-- Host integration guides for Trae, Claude Code, and Cursor
-- Tool routing guide for MCP hosts
-- Lightweight smoke and eval coverage for tool descriptions, schema visibility, and routing metadata
-
-### Changed
-- Unified public version wording across README, docs, and examples: `v0.8` = Broad School Retrieval, `v0.9` = Course-Aware Retrieval And Analysis, `v1.0-rc1` = Stable Agent Workflow Release
-- Strengthened MCP tool descriptions and schema hints for `search_course_projects`, `search_course_resources`, `inspect_course_project`, and `compare_course_projects`
-- README now documents host differences, routing expectations, and broad course-resource entry behavior
-
-## [1.0.0rc1] - 2026-04-26
-
-### Added
-- Stable `search -> inspect -> compare` Agent workflow release candidate
-- Broad school retrieval for `985` / `211` / `C9` / `双一流` / broad university scope queries
-- Course-aware profiles for the first 10 computer-science courses
-- Expanded eval and smoke coverage for school scope, course profile detection, course-specific assets, and safety constraints
-- Documentation hardening across README, tool reference, workflow, eval, release notes, and release checklist
-
-### Changed
-- `search_course_projects` now combines school-scope planning, course-aware query planning, README/root-tree enrichment, and explainable ranking as a stable release path
-- `inspect_course_project` now stably preserves query context, `course_profile_id`, and `course_specific_assets`
-- `compare_course_projects` now stably supports criteria + course profile comparison while keeping safety framing
-- Source value evaluation is now documented as a stable release capability together with `repo_type` classification and score-cap risk control
-- Release wording is aligned to `v0.8` / `v0.9` / `v1.0-rc1` without changing MCP interfaces
-
-### Safety
-- Preserved the learning-only safety boundary: only for course-project research and study reference
-- Continued to reject direct ghostwriting, code copying, report copying, and plagiarism submission framing
-- Continued to require source attribution and conservative handling of high-risk repositories
-
-### Compatibility
-- Preserved existing MCP tool names and primary input contracts
-- Preserved compatibility for `search_course_projects`, `inspect_course_project`, and `compare_course_projects`
-
-## [0.9.0] - 2026-04-26
-
-### Added
-- Course profiles for the first 10 computer-science courses in the initial course-aware rollout
-- Course-aware query analysis fields: `course_profile_id`, `detected_courses`, and `detected_course_ids`
-- Course-aware inspect/compare output fields: `course_profile_id` and `course_specific_assets`
-- New course-aware tests covering course profiles, course detection, query planning, scoring, inspect, compare, and eval quality
-
-### Changed
-- `retrieval_profiles` and broad school planner now generate course-aware GitHub queries using course aliases, intent hints, and structure signals
-- scorer now uses course-specific structure signals, course-specific reference utility, and negative signals to shape ranking and score caps
-- `inspect_course_project` and `compare_course_projects` now preserve course-aware analysis through the returned structured fields
-- `eval/run_eval.py` and `eval/queries.jsonl` now validate course-aware outputs across database, operating system, compiler, algorithms, machine learning, and computer networks scenarios
-- `retrieval_intents.py` now treats negated phrases such as `不要408题解` more conservatively and avoids misclassifying them as `solution`
-- README, tool reference, agent workflow, and Trae demo documentation now describe course-aware behavior and fields
-
-## [0.8.0] - 2026-04-26
-
-### Added
-- Broad school retrieval for `985` / `211` / `C9` / `双一流` / broad university scope queries
-- University profile groups for the first 20 schools in the initial rollout
-- School scope detection for `specific_school`, `multiple_schools`, `project_985`, `project_211`, `c9`, `double_first_class`, `broad_university`, and `none`
-- Broad scope response metadata: `school_scope`, `school_group`, `scope_note`, and `scope_coverage`
-- Tests for university profiles, school scope detection, broad school planner, broad search behavior, eval quality, and broad workflow compatibility
-
-### Changed
-- `search_course_projects` now plans broad scope retrieval by school profile fanout instead of stuffing all aliases into one GitHub query
-- Added per-school candidate budgeting, school coverage diversification, and broad-scope confidence constraints
-- `eval/run_eval.py` now supports direct execution from the repository root without requiring `PYTHONPATH=.`
-- Broad scope eval fixtures now synthesize inspectable per-school repositories for `search -> inspect -> compare` validation
-- README, tool reference, agent workflow, and Trae demo documentation now describe broad scope limits and safety boundaries
-
-### Compatibility
-- Preserved existing MCP tool names and primary input contracts
-- Preserved compatibility for `search_course_projects`, `inspect_course_project`, and `compare_course_projects`
-- Preserved the learning-only safety boundary: no direct ghostwriting, copying, or plagiarism submission support
-
-## [0.3.0] - 2026-04-24
-
-### Added
-- Trae IDE MCP configuration examples
-- Console script entry point for local MCP startup
-- stdio MCP smoke test
-- Deployment documentation for Trae integration
-
-### Changed
-- Improved deployment instructions for stdio and HTTP transports
-
-### Compatibility
-- Preserved all existing MCP tool names and schemas
-- Preserved existing provider interfaces
-
-## [0.2.0] - 2026-04-24
-
-### Added
-- Project governance files: `LICENSE`, `CHANGELOG.md`, and `CONTRIBUTING.md`
-- `docs/` documentation set for architecture, provider development, safety, and deployment
-- Provider registry to decouple provider construction and selection from core service orchestration
-- Lightweight `eval/` harness for contract checks on structured search output
-- GitHub Actions CI workflow for Python 3.10 and 3.11
-- README hardening for release status, testing, eval, safety boundaries, and host integration
-
-### Changed
-- Internal provider wiring to use a registry-based selection path while preserving MCP tool contracts
-- Release documentation and contributor guidance for a publishable open source baseline
-
-## [0.1.0] - 2026-04-23
-
-### Added
-- Initial Course Project Intelligence MCP Server MVP
-- Four MCP tools for search, brief extraction, route comparison, and resource listing
-- GitHub, Gitee, and Web seed providers
-- `stdio` and Streamable HTTP transports
-- Baseline tests for query analysis, ranking, service orchestration, and server registration
+- Preserved provider registry, `EvidenceCard`, `ContextBuilder`, `risk_flags`, `citation_hint`, `source_urls`, and source-type abstractions for future extension
+- Kept `search_course_resources` as a wrapper over `search_course_projects`
+- Kept `build_course_context` as an Evidence Pack layer rather than a new search engine

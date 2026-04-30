@@ -1,4 +1,4 @@
-"""providers 包收纳了 GitHub、Gitee 和 Web seed 三类数据源实现。"""
+"""Providers package with GitHub as the active release provider and others retained for future extension."""
 
 from app.providers.base import BaseProvider
 from app.providers.gitee import GiteeProvider

@@ -1,73 +1,63 @@
 # Host Test Prompts
 
-These prompts are designed to verify that an MCP host can see the server, choose the right tool, and continue through the `search -> inspect -> compare` chain when needed.
+These prompts are for the GitHub-only release.
 
 Use all results for learning reference only. Do not treat them as official course materials, and do not copy code or reports for submission.
 
 ## Trae
 
-- `请使用 course-project-intelligence，帮我找南开大学数据结构课程相关的公开项目、实验仓库和课程笔记。`
+- `请使用 course-project-intelligence 帮我找 GitHub 上和数据库课程设计相关的公开仓库`
   Expected tool chain: `search_course_projects`
-- `查询南开大学数据库课程资料和公开学习资源。`
+- `请找 GitHub 上的操作系统 labs、notes 和 reports`
   Expected tool chain: `search_course_resources`
-- `先帮我找数据库系统课程相关仓库，再分析第一个仓库适合参考什么。`
-  Expected tool chain: `search_course_projects -> inspect_course_project`
-- `看看第一个仓库有没有报告、SQL、schema 或 src。`
-  Expected tool chain: `search_course_projects -> inspect_course_project`
-- `比较前三个仓库哪个更适合参考课程笔记和实验代码结构。`
-  Expected tool chain: `search_course_projects -> compare_course_projects`
-- `先找编译原理课程资料，再分析最相关的仓库，最后比较前三个。`
-  Expected tool chain: `search_course_resources -> inspect_course_project -> compare_course_projects`
-- `把这些数据库课程设计仓库整理成给 Agent 用的 evidence pack，并保留风险提示和 citation hint。`
+- `分析这个 GitHub 仓库适合参考什么`
+  Expected tool chain: `inspect_course_project`
+- `比较这几个 GitHub 仓库哪个更适合作为数据库课程设计参考`
+  Expected tool chain: `compare_course_projects`
+- `把这些 GitHub 仓库整理成 Evidence Pack`
   Expected tool chain: `build_course_context`
+- `分析这个学校课程网页`
+  Expected behavior: `unsupported_source`
 
 ## Claude Code
 
-- `Use the course-project-intelligence MCP server to search for NKU OS lab repositories.`
+- `Use course-project-intelligence to search public GitHub repositories for compiler labs`
   Expected tool chain: `search_course_projects`
-- `Use course-project-intelligence to search course materials about compiler labs.`
+- `Use course-project-intelligence to search GitHub course materials for operating system labs`
   Expected tool chain: `search_course_resources`
-- `Search public university GitHub repositories for Java Web course projects, then inspect the top repository.`
-  Expected tool chain: `search_course_projects -> inspect_course_project`
-- `Inspect the first result and check whether it contains reports, SQL, schema, or src assets.`
-  Expected tool chain: `search_course_projects -> inspect_course_project`
-- `Compare the top three repositories for code structure and report reference value.`
-  Expected tool chain: `search_course_projects -> compare_course_projects`
-- `Search broad course materials for a university database course, inspect the best repository, then compare the top three.`
-  Expected tool chain: `search_course_resources -> inspect_course_project -> compare_course_projects`
-- `Use these known GitHub URLs to build an agent-readable context pack with risk flags and citation hints.`
+- `Inspect this GitHub repository and tell me whether it contains report, sql, schema, or src assets`
+  Expected tool chain: `inspect_course_project`
+- `Compare these GitHub repositories for report structure and schema reference value`
+  Expected tool chain: `compare_course_projects`
+- `Build an Evidence Pack from these GitHub repository URLs`
   Expected tool chain: `build_course_context`
+- `Analyze this school course page`
+  Expected behavior: `unsupported_source`
 
 ## Cursor
 
-- `Find public GitHub repositories and notes for Nankai Database System course projects using the MCP server.`
+- `Find public GitHub repositories for university database course projects`
   Expected tool chain: `search_course_projects`
-- `Find public university CS course materials for operating system labs.`
+- `Find GitHub-hosted course materials for computer networks labs`
   Expected tool chain: `search_course_resources`
-- `Search broad compiler course materials, then inspect the first result.`
-  Expected tool chain: `search_course_resources -> inspect_course_project`
-- `Inspect the first repository and check whether it has lab reports or schema files.`
-  Expected tool chain: `search_course_projects -> inspect_course_project`
-- `Compare the first three results.`
-  Expected tool chain: `search_course_projects -> compare_course_projects`
-- `Use course-project-intelligence to search compiler course materials, inspect the best repo, and compare the top three.`
-  Expected tool chain: `search_course_resources -> inspect_course_project -> compare_course_projects`
-- `Turn the existing inspect results into a final context pack for the agent.`
+- `Analyze this GitHub repository as a learning reference for a Java Web course project`
+  Expected tool chain: `inspect_course_project`
+- `Compare these GitHub repos for operating system lab workflow`
+  Expected tool chain: `compare_course_projects`
+- `Turn these GitHub repository URLs into an Evidence Pack with citations and risk flags`
   Expected tool chain: `build_course_context`
+- `Inspect this non-GitHub URL`
+  Expected behavior: `unsupported_source`
 
 ## Generic MCP Host
 
-- `Use course-project-intelligence to search public repositories for university database course projects.`
+- `Search public GitHub repositories for university CS course projects`
   Expected tool chain: `search_course_projects`
-- `Use course-project-intelligence to search course resources about operating system lab materials.`
+- `Search GitHub repositories for labs, reports, assignments, and notes`
   Expected tool chain: `search_course_resources`
-- `Find public notes, reports, and lab materials for data structure courses.`
-  Expected tool chain: `search_course_resources`
-- `Inspect this GitHub repository and tell me whether it is useful for Java Web course design reference.`
+- `Inspect this GitHub repository URL`
   Expected tool chain: `inspect_course_project`
-- `Compare these three repositories for database design and report structure.`
+- `Compare these GitHub repository candidates`
   Expected tool chain: `compare_course_projects`
-- `Search broad compiler course materials first, inspect the strongest repo, then compare the top three candidates.`
-  Expected tool chain: `search_course_resources -> inspect_course_project -> compare_course_projects`
-- `Build a context pack from the compare result so the agent can answer with safety notes and citations.`
+- `Build a final Evidence Pack from these GitHub URLs`
   Expected tool chain: `build_course_context`

@@ -1,8 +1,5 @@
-{"query":"数据库课程设计参考资料","intended_use":"study guidance"}
-{"query":"操作系统实验报告和源码","intended_use":"lab workflow analysis"}
-{"query":"Java Web 课程设计 repo","intended_use":"project structure review"}
-{"query":"编译原理 lab materials","intended_use":"compiler lab preparation"}
-{"query":"Find university CS course materials about databases","intended_use":"learning-reference summary"}
-{"query":"给 Agent 用的上下文：帮我整理数据库课程设计资料","intended_use":"agent grounding"}
-{"query":"整理几个可参考部分和风险，关于操作系统实验","intended_use":"risk-aware answer drafting"}
-{"query":"找几个 repo 并告诉我下一步该 inspect 哪个","intended_use":"next-tool planning"}
+{"query":"database course project github repositories","intended_use":"study guidance"}
+{"query":"operating system lab github repositories","intended_use":"lab workflow analysis"}
+{"query":"java web course design github repo","intended_use":"project structure review"}
+{"query":"compiler lab github repositories","intended_use":"compiler lab preparation"}
+{"query":"build context from public github repositories for university cs databases","intended_use":"agent grounding"}

@@ -1,8 +1,8 @@
-{"case":"query_only","query":"数据库课程设计参考 repo","intended_use":"study guidance"}
-{"case":"source_urls","query":"分析这些数据库课程设计仓库能参考什么","source_urls":["https://github.com/example/db-project-1","https://github.com/example/db-project-2"],"expected_next_tool":"inspect_course_project"}
-{"case":"search_results","query":"操作系统实验报告和源码","search_results_key":"os_search_results"}
-{"case":"inspect_results","query":"这个仓库适合参考什么","inspect_results_key":"single_inspect_result","expected_next_tool":null}
-{"case":"compare_result","query":"这几个仓库哪个更适合数据库课程设计参考","compare_result_key":"database_compare_result","expected_next_tool":null}
-{"case":"multiple_source_urls","query":"先整理这些候选仓库的上下文","source_urls":["https://github.com/example/compiler-1","https://github.com/example/compiler-2","https://github.com/example/compiler-3"],"expected_next_tool":"inspect_course_project"}
-{"case":"multi_inspect_results","query":"比较这些已分析仓库谁更适合参考","inspect_results_key":"multi_inspect_results","expected_next_tool":"compare_course_projects"}
-{"case":"compare_result_ready","query":"比较结果已经有了，整理最终回答上下文","compare_result_key":"database_compare_result","expected_next_tool":null}
+{"case":"query_only","query":"database course project github repositories","intended_use":"study guidance","expected_next_tool":"inspect_course_project"}
+{"case":"source_urls_github","query":"analyze these database repositories","source_urls":["https://github.com/example/db-project-1","github.com/example/db-project-2"],"expected_next_tool":"inspect_course_project"}
+{"case":"search_results","query":"operating system lab github repositories","search_results_key":"os_search_results","expected_next_tool":"inspect_course_project"}
+{"case":"inspect_results","query":"what can this repository be used for","inspect_results_key":"single_inspect_result","expected_next_tool":null}
+{"case":"compare_result","query":"which repository is better for database design","compare_result_key":"database_compare_result","expected_next_tool":null}
+{"case":"multi_inspect_results","query":"compare these inspected repositories","inspect_results_key":"multi_inspect_results","expected_next_tool":"compare_course_projects"}
+{"case":"unsupported_school_site","query":"分析这个学校课程网页","source_urls":["https://example.edu/course/db"],"expected_next_tool":null,"expected_flags":["unsupported_source","low_confidence"]}
+{"case":"unsupported_blog","query":"analyze this blog post","source_urls":["https://example.com/blog/course-project"],"expected_next_tool":null,"expected_flags":["unsupported_source","low_confidence"]}

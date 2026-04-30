@@ -1,21 +1,14 @@
 # Agent Context Pack
 
-Agent Context Pack is a structured evidence layer for AI agents and MCP hosts.
+Agent Context Pack is the GitHub-focused evidence layer for this server.
 
-Instead of returning only raw search results, it packages a small set of public learning references into short, controllable evidence cards with usage guidance, risk flags, citation hints, a suggested next tool, and a stable safety note.
+`build_course_context` turns GitHub repository search, inspect, compare, or provided GitHub URLs into an agent-readable Evidence Pack with:
 
-## Why It Exists
-
-Normal search output is useful for discovery, but agents still need to decide:
-
-- which sources are most relevant
-- which parts are safe to reference
-- whether a repository looks unofficial
-- whether there is direct copy risk
-- whether the agent should inspect one repository or compare several
-- how to keep source attribution visible in the final answer
-
-`build_course_context` solves that packaging problem without replacing the existing search tools.
+- `summary_for_agent`
+- `evidence_cards`
+- `suggested_next_tool`
+- `agent_usage_guidance`
+- `safety_note`
 
 ## Supported Inputs
 
@@ -27,45 +20,35 @@ Normal search output is useful for discovery, but agents still need to decide:
 - `inspect_results`
 - `compare_result`
 
-Recommended use:
+Expected semantics in this release:
 
-- use `query` when the host has no prior results
-- use `source_urls` when the user or agent already knows candidate links
-- use `search_results` when discovery already happened and no re-search is needed
-- use `inspect_results` when the host already analyzed one or more repositories
-- use `compare_result` when the host already knows the comparison outcome and wants a final answer pack
+- `query`: GitHub search path
+- `source_urls`: intended for GitHub repository URLs
+- `search_results`: expected to come from GitHub repository search
+- `inspect_results`: expected to come from GitHub repository inspection
+- `compare_result`: expected to come from GitHub repository comparison
 
-If only `source_urls` are available, the next recommended step is usually `inspect_course_project`.
+Non-GitHub URLs in `source_urls` are marked as `unsupported_source` and are not deeply inspected.
 
-If `compare_result` is already available, the context pack is usually ready for the final agent answer.
-
-## How It Differs From Normal Search
-
-`search_course_projects` and `search_course_resources` focus on discovery.
-
-`build_course_context` focuses on agent-readable packaging:
-
-- short summary for the agent
-- compact evidence cards
-- `risk_flags`
-- `recommended_usage`
-- `citation_hint`
-- `suggested_next_tool`
-- stronger downstream safety framing
-
-## EvidenceCard Fields
+## EvidenceCard
 
 Each evidence card contains:
 
-- `title`: short source title, repository name, or result label
-- `url`: source URL when available
-- `source_type`: normalized type such as `github_repo`, `webpage`, `course_material`, or `unknown`
-- `relevance_reason`: short explanation of why the source matches the query
-- `usable_parts`: what the agent may reference, such as `report`, `src`, `sql`, `schema`, `notes`, `lab`, `assignment`, or `readme`
-- `risk_flags`: lightweight safety hints
-- `recommended_usage`: short guidance about how to use the source as learning reference
-- `citation_hint`: short source wording for downstream attribution
-- `raw_score`: original relevance score when available
+- `title`
+- `url`
+- `source_type`
+- `relevance_reason`
+- `usable_parts`
+- `risk_flags`
+- `recommended_usage`
+- `citation_hint`
+- `raw_score`
+
+Current release `source_type` guidance:
+
+- `github_repo`: officially supported
+- `unknown`: unable to determine
+- `unsupported_source`: non-GitHub URL or unsupported source
 
 ## `risk_flags`
 
@@ -77,50 +60,36 @@ Current lightweight risk flags include:
 - `low_confidence`
 - `broad_query`
 - `unknown_source`
+- `unsupported_source`
 
-These are heuristic reminders, not hard blockers. They help the agent avoid overclaiming and keep the answer conservative.
+Defaults:
 
-## `citation_hint`
+- GitHub repository evidence should keep `not_official`
+- non-GitHub URL evidence should keep `unsupported_source` and `low_confidence`
+- references to reports, assignments, homework, labs, src, code, course design, experiments, or reports should tend to keep `copy_risk`
 
-`citation_hint` is not a formal academic citation. It is a short source reminder such as:
+## `source_urls`
 
-- `Learning reference only: <title> - <url>`
-- `Learning reference only: <title> - source unavailable`
+`source_urls` is intended for GitHub repository URLs.
 
-It helps the agent preserve source visibility without inventing author, year, institution, or official status.
+Behavior:
 
-## `recommended_usage`
-
-`recommended_usage` tells the agent what is reasonable to reference from a source.
-
-Examples:
-
-- use for report structure reference
-- use for lab workflow comparison
-- use for SQL schema learning reference
-- inspect further before making detailed claims
-
-This guidance exists to keep answers grounded and to reduce the chance of directly reusing coursework artifacts.
+- GitHub URL: preserved as a normal GitHub evidence candidate
+- non-GitHub URL: preserved as `unsupported_source`
+- non-GitHub URL: no deep inspection
+- non-GitHub URL: recommended usage should tell the agent to ask for a GitHub repository URL
 
 ## `suggested_next_tool`
 
-`suggested_next_tool` helps the agent decide what to do next:
+`suggested_next_tool` should help the host continue the GitHub workflow:
 
-- `inspect_course_project` when the pack came from broad search or raw `source_urls`
-- `compare_course_projects` when several inspected candidates should be compared next
-- `None` when the current pack is already ready for a final answer
+- `inspect_course_project` when the pack contains GitHub candidates that should be inspected
+- `compare_course_projects` when multiple inspected GitHub candidates should be compared
+- `None` when the pack is already ready for a final answer or when only unsupported sources were provided
 
-## Example Chains
+## Safety
 
-- `build_course_context -> inspect_course_project -> compare_course_projects`
-- `search_course_resources -> build_course_context`
-- `inspect_course_project -> build_course_context`
-- `compare_course_projects -> build_course_context`
-
-## Safety Requirements
-
-- Results are public learning references only.
-- They do not represent official course materials or official course conclusions.
-- Agents should not present GitHub repositories as official course assets.
-- Agents should keep source attribution visible.
-- Agents should not encourage directly copying code, reports, or assignments for submission.
+- Evidence Pack sources are public GitHub learning references.
+- They are not official course materials.
+- Keep `citation_hint`, `risk_flags`, and `safety_note` visible downstream.
+- Do not encourage direct copying of code, reports, labs, or assignments.

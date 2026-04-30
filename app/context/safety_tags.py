@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from app.schemas import SearchResultItem
+from app.utils.github_urls import is_github_repo_url
 from app.utils.text import unique_preserve_order
 
 
@@ -68,6 +69,9 @@ def infer_risk_flags(query: str, item: SearchResultItem, usable_parts: list[str]
 
     flags: list[str] = []
 
+    if _is_unsupported_source(item):
+        flags.extend(["unsupported_source", "low_confidence"])
+
     if _is_repository_source(item):
         flags.append("not_official")
 
@@ -94,8 +98,16 @@ def infer_risk_flags(query: str, item: SearchResultItem, usable_parts: list[str]
 
 def _is_repository_source(item: SearchResultItem) -> bool:
     source_type = (item.source_type or "").lower()
-    url = (item.url or "").lower()
-    return "github" in source_type or "gitee" in source_type or "github.com" in url or "gitee.com" in url
+    url = item.url or ""
+    return "github" in source_type or is_github_repo_url(url)
+
+
+def _is_unsupported_source(item: SearchResultItem) -> bool:
+    source_type = (item.source_type or "").lower()
+    url = (item.url or "").strip()
+    if source_type == "unsupported_source":
+        return True
+    return bool(url) and url.startswith(("http://", "https://")) and not is_github_repo_url(url)
 
 
 def _is_low_confidence(item: SearchResultItem, usable_parts: list[str]) -> bool:

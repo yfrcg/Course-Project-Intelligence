@@ -13,13 +13,7 @@ from app.server import create_mcp_server
 
 def load_cases() -> list[dict]:
     cases_path = ROOT / "eval" / "queries.jsonl"
-    cases: list[dict] = []
-    for line in cases_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        cases.append(json.loads(line))
-    return cases
+    return [json.loads(line) for line in cases_path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def load_tool_map():
@@ -33,11 +27,9 @@ def validate_docs() -> list[str]:
         ROOT / "docs" / "routing-diagnostics.md",
         ROOT / "docs" / "agent-context-pack.md",
         ROOT / "docs" / "agent-workflow.md",
-        ROOT / "docs" / "integration-trae.md",
-        ROOT / "docs" / "integration-claude-code.md",
-        ROOT / "docs" / "integration-cursor.md",
         ROOT / "examples" / "prompt-cookbook.md",
         ROOT / "examples" / "host-test-prompts.md",
+        ROOT / "README.md",
     ]
     errors: list[str] = []
     for doc_path in required_docs:
@@ -48,18 +40,10 @@ def validate_docs() -> list[str]:
 
 def validate_case(case: dict, tool_map: dict[str, object]) -> list[str]:
     errors: list[str] = []
-    expected_tool = case.get("expected_preferred_tool")
-    acceptable_tools = case.get("acceptable_tools")
-    candidate_tools = [expected_tool] if expected_tool else list(acceptable_tools or [])
+    target_name = case["expected_preferred_tool"]
+    if target_name not in tool_map:
+        return [f"expected tool `{target_name}` is not registered for query `{case['query']}`"]
 
-    if not candidate_tools:
-        return [f"case has no expected tool: {case.get('query')}"]
-
-    present_candidates = [tool_name for tool_name in candidate_tools if tool_name in tool_map]
-    if not present_candidates:
-        return [f"none of the expected tools are registered for query: {case.get('query')}"]
-
-    target_name = expected_tool or present_candidates[0]
     target = tool_map[target_name]
     description = (target.description or "").lower()
     meta = target.meta or {}

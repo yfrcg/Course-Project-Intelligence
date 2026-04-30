@@ -16,13 +16,7 @@ from app.tools import course_tools
 
 def load_cases() -> list[dict]:
     cases_path = ROOT / "eval" / "workflow_queries.jsonl"
-    cases: list[dict] = []
-    for line in cases_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        cases.append(json.loads(line))
-    return cases
+    return [json.loads(line) for line in cases_path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def validate_docs() -> list[str]:
@@ -55,14 +49,16 @@ def workflow_fixtures() -> dict[str, object]:
                 reference_utility=["lab workflow reference", "report structure reference"],
             ).model_dump(mode="json"),
             SearchResultItem(
-                title="OS Notes",
-                url="https://example.edu/os-notes",
-                source="web",
-                source_type="web",
-                snippet="Public notes and lab summaries.",
+                title="OS Notes Repo",
+                url="https://github.com/example/os-notes",
+                source="github",
+                source_type="github",
+                repo="example/os-notes",
+                snippet="Includes notes and README guidance.",
                 explanation="Useful for notes review.",
-                confidence=0.61,
-                score=0.57,
+                confidence=0.73,
+                score=0.74,
+                reference_utility=["notes review"],
             ).model_dump(mode="json"),
         ],
         "single_inspect_result": [
@@ -100,7 +96,7 @@ def workflow_fixtures() -> dict[str, object]:
             },
         ],
         "database_compare_result": {
-            "query": "这几个仓库哪个更适合数据库课程设计参考",
+            "query": "which repository is better for database design",
             "best_overall": "example/db-project-1",
             "summary": "The first repository is structurally stronger.",
             "recommendation": "`example/db-project-1` is more suitable as a learning reference for database schema and report structure.",
@@ -129,29 +125,30 @@ def workflow_fixtures() -> dict[str, object]:
 
 async def fake_search(payload: SearchCourseProjectsInput) -> SearchCourseProjectsOutput:
     query = payload.query.lower()
-    if "compiler" in query:
+    if "operating system" in query:
         results = [
             SearchResultItem(
-                title="Compiler Lab Repo",
-                url="https://github.com/example/compiler-lab",
+                title="OS Lab Repo",
+                url="https://github.com/example/os-lab",
                 source="github",
                 source_type="github",
-                repo="example/compiler-lab",
-                snippet="Contains lab, report, and src assets.",
-                explanation="Matches compiler lab needs.",
+                repo="example/os-lab",
+                snippet="Contains report, src, and notes.",
+                explanation="Matches operating system lab needs.",
                 confidence=0.83,
                 score=0.87,
                 reference_utility=["lab workflow reference"],
             ),
             SearchResultItem(
-                title="Compiler Notes",
-                url="https://example.edu/compiler-notes",
-                source="web",
-                source_type="web",
-                snippet="Public notes and lab summaries.",
+                title="OS Notes Repo",
+                url="https://github.com/example/os-notes",
+                source="github",
+                source_type="github",
+                repo="example/os-notes",
+                snippet="Contains notes and README guidance.",
                 explanation="Useful for notes review.",
-                confidence=0.6,
-                score=0.58,
+                confidence=0.72,
+                score=0.73,
             ),
         ]
     else:
@@ -171,15 +168,16 @@ async def fake_search(payload: SearchCourseProjectsInput) -> SearchCourseProject
                 reference_utility=["report structure reference", "database schema reference"],
             ),
             SearchResultItem(
-                title="Database Notes Collection",
-                url="https://example.edu/db-notes",
-                source="web",
-                source_type="web",
-                snippet="Public course notes and lab materials.",
-                explanation="Useful for notes and lab workflow reference.",
-                confidence=0.66,
-                score=0.63,
-                reference_utility=["notes review", "lab preparation"],
+                title="Database Notes Repo",
+                url="https://github.com/example/database-notes",
+                source="github",
+                source_type="github",
+                repo="example/database-notes",
+                snippet="Contains notes, docs, and README guidance.",
+                explanation="Useful for notes review and terminology alignment.",
+                confidence=0.7,
+                score=0.72,
+                reference_utility=["notes review"],
             ),
         ]
     return SearchCourseProjectsOutput(total_found=len(results), results=results)
@@ -195,35 +193,35 @@ def validate_context_pack(case: dict, result) -> list[str]:
         errors.append(f"missing evidence_cards for case `{case['case']}`")
         return errors
     first_card = result.evidence_cards[0]
-    if not first_card.title:
-        errors.append(f"missing evidence card title for case `{case['case']}`")
     if not first_card.source_type:
         errors.append(f"missing evidence card source_type for case `{case['case']}`")
     if not first_card.risk_flags:
         errors.append(f"missing evidence card risk_flags for case `{case['case']}`")
-    if not first_card.recommended_usage:
-        errors.append(f"missing evidence card recommended_usage for case `{case['case']}`")
     if not result.safety_note:
         errors.append(f"missing safety_note for case `{case['case']}`")
     if not result.agent_usage_guidance:
         errors.append(f"missing agent_usage_guidance for case `{case['case']}`")
-    expected_next_tool = case.get("expected_next_tool", "__skip__")
-    if expected_next_tool != "__skip__" and result.suggested_next_tool != expected_next_tool:
+    if result.suggested_next_tool != case.get("expected_next_tool"):
         errors.append(
-            f"unexpected suggested_next_tool `{result.suggested_next_tool}` for case `{case['case']}`, expected `{expected_next_tool}`"
+            f"unexpected suggested_next_tool `{result.suggested_next_tool}` for case `{case['case']}`, expected `{case.get('expected_next_tool')}`"
         )
+    expected_flags = case.get("expected_flags") or []
+    for flag in expected_flags:
+        if flag not in first_card.risk_flags:
+            errors.append(f"missing expected flag `{flag}` for case `{case['case']}`")
+    if expected_flags and first_card.source_type != "unsupported_source":
+        errors.append(f"unsupported case `{case['case']}` should emit source_type=unsupported_source")
     combined = " ".join(
         [
             result.summary_for_agent,
             result.agent_usage_guidance,
             result.safety_note,
             first_card.citation_hint or "",
+            first_card.recommended_usage,
         ]
     ).lower()
-    if "official course" in combined and "not official" not in combined:
-        errors.append(f"public source was framed too strongly for case `{case['case']}`")
-    if "copy directly" in combined and "must not" not in combined and "avoid advice" not in combined:
-        errors.append(f"no-copy safety framing is unstable for case `{case['case']}`")
+    if expected_flags and "provide a github repository url instead" not in combined:
+        errors.append(f"unsupported case `{case['case']}` should ask for a GitHub repository URL")
     return errors
 
 

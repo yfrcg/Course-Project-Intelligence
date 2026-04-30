@@ -39,6 +39,7 @@ from app.schemas import (
     SearchCourseProjectsOutput,
     SAFETY_NOTE_TEXT,
 )
+from app.utils.github_urls import canonical_github_repo_url, is_github_repo_url, normalize_github_repo_input
 from app.utils.logging import get_logger
 from app.utils.text import extract_keywords, truncate_text, unique_preserve_order
 
@@ -152,7 +153,7 @@ class CourseProjectIntelligenceService:
         return school or None
 
     def _provider_supports_broad_school_fanout(self, provider: BaseProvider) -> bool:
-        return provider.name in {"github", "gitee"} or provider.source_type in {"github", "gitee"}
+        return provider.name == "github" or provider.source_type == "github"
 
     def _broad_school_planner_config(self) -> BroadSchoolPlannerConfig:
         return BroadSchoolPlannerConfig(
@@ -664,13 +665,22 @@ class CourseProjectIntelligenceService:
         collected = []
         warnings: list[str] = []
         provider_status: dict[str, Any] = {}
+        requested_source_types = unique_preserve_order(
+            [source_type.lower() for source_type in (payload.source_types or analysis.source_types or []) if source_type]
+        )
+        ignored_source_types = [source_type for source_type in requested_source_types if source_type != "github"]
+        if ignored_source_types:
+            warnings.append(
+                "Current release officially supports only GitHub public repositories; "
+                f"ignored source types: {', '.join(ignored_source_types)}."
+            )
 
         if not providers:
-            warnings.append("未启用或未匹配到可用 provider，请检查 source_types 与 ENABLE_* 配置。")
+            warnings.append(
+                "No enabled provider matched the request. Current release officially supports only GitHub public repositories."
+            )
 
         for provider in providers:
-            if provider.name == "gitee":
-                warnings.append("Gitee provider 当前仍是 MVP 占位，搜索接口尚未完整实现。")
             try:
                 if broad_plan is not None and self._provider_supports_broad_school_fanout(provider):
                     items, provider_status[provider.name] = await self._search_provider_with_broad_plan(
@@ -795,20 +805,27 @@ class CourseProjectIntelligenceService:
         self,
         payload: GetProjectBriefInput,
     ) -> GetProjectBriefOutput:
-        provider = self.registry.provider_for_url(payload.url)
-        result = await provider.get_project_brief(payload.url)
-        if result is None and provider is not self.web_seed:
-            result = await self.web_seed.get_project_brief(payload.url)
-
-        if result is None:
+        if not is_github_repo_url(payload.url):
             result = ProviderSearchResult(
                 title=payload.url,
                 url=payload.url,
-                source="web",
-                source_type="web",
-                snippet="Unable to extract detailed brief from the target URL.",
+                source="unsupported",
+                source_type="unsupported_source",
+                snippet="Current release supports only public GitHub repository URLs.",
                 metadata={},
             )
+        else:
+            provider = self.registry.provider_for_url(payload.url)
+            result = await provider.get_project_brief(payload.url)
+            if result is None:
+                result = ProviderSearchResult(
+                    title=payload.url,
+                    url=payload.url,
+                    source="github",
+                    source_type="github",
+                    snippet="Unable to extract detailed brief from the target GitHub repository URL.",
+                    metadata={},
+                )
 
         analysis = analyze_query(f"{result.title} {result.snippet}")
         tech_stack = infer_tech_tags(result.title, result.snippet, result.metadata or {})
@@ -939,21 +956,19 @@ class CourseProjectIntelligenceService:
 
     def _categorize_resource(self, title: str, url: str, note: str) -> str:
         text = f"{title} {url} {note}".lower()
-        if "github.com" in text or "gitee.com" in text:
+        if "github.com" in text:
             return "repository"
-        if "blog" in text or "csdn" in text or "cnblogs" in text:
-            return "blog"
         if "实验" in text or "lab" in text:
             return "lab_material"
-        if "报告" in text or "slides" in text:
-            return "report_or_slides"
+        if "报告" in text or "report" in text:
+            return "report"
         return "general_resource"
 
     async def list_course_resources(
         self,
         payload: ListCourseResourcesInput,
     ) -> ListCourseResourcesOutput:
-        query = f"{payload.school or ''} {payload.course} 资料 教程 实验 大作业 github"
+        query = f"{payload.school or ''} {payload.course} github repository lab report notes assignment"
         search_result = await self.search_course_projects(
             SearchCourseProjectsInput(
                 query=query.strip(),
@@ -999,10 +1014,33 @@ class CourseProjectIntelligenceService:
         self,
         payload: InspectCourseProjectInput,
     ) -> InspectCourseProjectOutput:
+        normalized_repo = normalize_github_repo_input(payload.repo)
+        input_url = canonical_github_repo_url(payload.repo) if is_github_repo_url(payload.repo) else (
+            payload.repo if payload.repo.startswith(("http://", "https://")) else None
+        )
+        if normalized_repo is None:
+            return InspectCourseProjectOutput(
+                repo=payload.repo,
+                url=input_url,
+                error=(
+                    "unsupported_source: inspect_course_project currently supports only GitHub repository URLs "
+                    "or owner/name identifiers. Provide a GitHub repository URL instead."
+                ),
+                fit_for_query="unknown",
+                task_fit_reason=(
+                    "Current release does not deeply inspect non-GitHub sources. "
+                    "Provide a GitHub repository URL or owner/name identifier."
+                ),
+                not_suitable_for=["non_github_source_deep_inspection"],
+                suggested_usage=["provide a GitHub repository URL instead"],
+                risk_level="high",
+                risk_note="unsupported_source",
+            )
+
         provider = self.github
         if not hasattr(provider, "inspect_repository"):
             return InspectCourseProjectOutput(
-                repo=payload.repo,
+                repo=normalized_repo,
                 error="GitHub provider is unavailable for inspect_course_project.",
             )
         try:
@@ -1012,14 +1050,14 @@ class CourseProjectIntelligenceService:
             }
             if payload.query and self._provider_supports_query_inspect(provider):
                 inspect_kwargs["query"] = payload.query
-            return await provider.inspect_repository(payload.repo, **inspect_kwargs)
+            return await provider.inspect_repository(normalized_repo, **inspect_kwargs)
         except Exception as exc:
-            logger.warning("inspect_course_project failed for %s: %s", payload.repo, exc)
+            logger.warning("inspect_course_project failed for %s: %s", normalized_repo, exc)
             return InspectCourseProjectOutput(
-                repo=payload.repo,
-                url=f"https://github.com/{payload.repo}" if "/" in payload.repo else None,
+                repo=normalized_repo,
+                url=f"https://github.com/{normalized_repo}" if "/" in normalized_repo else None,
                 source_provider="github",
-                error=f"Failed to inspect repository `{payload.repo}`: {exc}",
+                error=f"Failed to inspect repository `{normalized_repo}`: {exc}",
                 fit_for_query="unknown",
                 task_fit_reason="仓库分析失败，无法判断当前任务匹配度。",
                 not_suitable_for=["不适合作为当前任务的主要参考对象"],

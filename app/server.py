@@ -44,9 +44,9 @@ def create_mcp_server(*, streamable_http_path: str = "/mcp") -> FastMCP:
     mcp = FastMCP(
         name="Course Project Intelligence MCP Server",
         instructions=(
-            "A vertical intelligence and retrieval MCP server for public course-project "
-            "research. It is designed for learning references, technical route comparison, "
-            "public resource discovery, and risk-aware project intelligence, not for "
+            "A GitHub-focused MCP server for discovering, inspecting, comparing, and "
+            "contextualizing public university computer science course project repositories "
+            "as learning references. It is not for official course material retrieval or "
             "directly producing submit-ready assignments."
         ),
         log_level=settings.log_level.upper(),
@@ -63,14 +63,14 @@ def create_mcp_server(*, streamable_http_path: str = "/mcp") -> FastMCP:
         query: Annotated[
             str,
             Field(
-                description="University CS course query for course resources, course materials, projects, labs, notes, assignments, reports, or repositories."
+                description="University CS query for public GitHub repositories related to course projects, labs, notes, assignments, reports, SQL or schema assets, or course design references."
             ),
         ],
         school: Annotated[str | None, Field(description="Optional school constraint.")] = None,
         course: Annotated[str | None, Field(description="Optional course constraint.")] = None,
         source_types: Annotated[
             list[str] | None,
-            Field(description="Optional source filters such as github, gitee, or web."),
+            Field(description="Optional source filters. The current stable value is github."),
         ] = None,
         top_k: Annotated[int, Field(description="Number of results to return.")] = 5,
         freshness: Annotated[str | None, Field(description="Optional freshness hint.")] = None,
@@ -98,14 +98,14 @@ def create_mcp_server(*, streamable_http_path: str = "/mcp") -> FastMCP:
         query: Annotated[
             str,
             Field(
-                description="Broad university CS course query for course resources, course materials, notes, labs, assignments, reports, or repositories."
+                description="Broad university CS query for public GitHub repositories that host course materials, notes, labs, assignments, reports, or repositories."
             ),
         ],
         school: Annotated[str | None, Field(description="Optional school constraint.")] = None,
         course: Annotated[str | None, Field(description="Optional course constraint.")] = None,
         providers: Annotated[
             list[str] | None,
-            Field(description="Optional provider filters such as github, gitee, or web."),
+            Field(description="Optional provider filters. The current stable value is github."),
         ] = None,
         top_k: Annotated[int, Field(description="Number of results to return.")] = 5,
         include_notes: Annotated[bool, Field(description="Bias toward notes and course study materials.")] = True,
@@ -144,7 +144,7 @@ def create_mcp_server(*, streamable_http_path: str = "/mcp") -> FastMCP:
         query: Annotated[
             str,
             Field(
-                description="User question about course resources or project references that should be turned into an agent-readable context pack."
+                description="User question about GitHub course project repositories or learning references that should be turned into an agent-readable Evidence Pack."
             ),
         ],
         max_sources: Annotated[int, Field(description="Maximum number of evidence cards to keep.")] = 5,
@@ -155,7 +155,7 @@ def create_mcp_server(*, streamable_http_path: str = "/mcp") -> FastMCP:
         ] = None,
         source_urls: Annotated[
             list[str] | None,
-            Field(description="Optional known repository or webpage URLs that should be turned into evidence cards without a fresh search."),
+            Field(description="Optional known GitHub repository URLs that should be turned into evidence cards without a fresh search. Non-GitHub URLs are marked as unsupported_source."),
         ] = None,
         search_results: Annotated[
             list[dict] | None,
@@ -184,8 +184,8 @@ def create_mcp_server(*, streamable_http_path: str = "/mcp") -> FastMCP:
     @mcp.tool(
         name="get_project_brief",
         description=(
-            "Extract a structured brief for a public project or web page, including summary, "
-            "inferred course, inferred school, tech stack, project type, and risk note."
+            "Extract a lightweight structured brief for a public GitHub repository URL, including "
+            "summary, inferred course, inferred school, tech stack, project type, and risk note."
         ),
         structured_output=True,
     )
@@ -195,7 +195,7 @@ def create_mcp_server(*, streamable_http_path: str = "/mcp") -> FastMCP:
     @mcp.tool(
         name="compare_project_routes",
         description=(
-            "Compare multiple public projects or discovered project candidates and summarize "
+            "Compare multiple public GitHub repositories or discovered GitHub candidates and summarize "
             "common modules, differing routes, typical stack choices, and a recommended learning path."
         ),
         structured_output=True,
@@ -216,7 +216,7 @@ def create_mcp_server(*, streamable_http_path: str = "/mcp") -> FastMCP:
     async def compare_course_projects(
         repos: Annotated[
             list[str],
-            Field(description="GitHub repositories in owner/name form to compare as candidate learning references."),
+            Field(description="GitHub repositories in owner/name form or GitHub repository URLs to compare as candidate learning references."),
         ],
         query: Annotated[
             str | None,
@@ -235,8 +235,8 @@ def create_mcp_server(*, streamable_http_path: str = "/mcp") -> FastMCP:
     @mcp.tool(
         name="list_course_resources",
         description=(
-            "List public resources for a course, including repositories, blogs, lab materials, "
-            "and public experience pages."
+            "List public GitHub repository resources for a course, including repositories that "
+            "look like projects, labs, notes, or reports."
         ),
         structured_output=True,
     )
@@ -254,7 +254,7 @@ def create_mcp_server(*, streamable_http_path: str = "/mcp") -> FastMCP:
         structured_output=True,
     )
     async def inspect_course_project(
-        repo: Annotated[str, Field(description="GitHub repository in owner/name form.")],
+        repo: Annotated[str, Field(description="GitHub repository in owner/name form or GitHub repository URL.")],
         query: Annotated[
             str | None,
             Field(description="Optional user task context used to judge fit_for_query and reference value."),
