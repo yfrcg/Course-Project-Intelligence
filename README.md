@@ -1,114 +1,61 @@
 # Course Project Intelligence MCP Server
 
-A GitHub-focused MCP server for discovering, inspecting, comparing, and contextualizing public university CS course project repositories as learning references for AI agents.
+<p align="center">
+  <img src="assets/readme-hero.svg" alt="Course Project Intelligence animated project overview" width="100%">
+</p>
 
-## Overview
+<p align="center">
+  <a href="README.md"><strong>English</strong></a>
+  ·
+  <a href="README.zh-CN.md">中文</a>
+  ·
+  <a href="docs/readme-showcase.html">CSS showcase</a>
+  ·
+  <a href="docs/readme-showcase.zh-CN.html">中文展示页</a>
+</p>
 
-Course Project Intelligence MCP Server is a standard MCP server for hosts such as Trae, Claude Code, and Cursor.
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.10+-2563eb?style=for-the-badge&logo=python&logoColor=white">
+  <img alt="MCP" src="https://img.shields.io/badge/MCP-FastMCP-10b981?style=for-the-badge">
+  <img alt="Transport" src="https://img.shields.io/badge/stdio%20%2B%20HTTP-ready-f59e0b?style=for-the-badge">
+  <img alt="License" src="https://img.shields.io/badge/License-MIT-111827?style=for-the-badge">
+</p>
 
-It is built for:
+Course Project Intelligence is a GitHub-focused MCP server that helps AI agents discover, inspect, compare, and package public university computer-science course project repositories as safe learning references.
 
-- discovering public GitHub repositories related to university CS course projects
-- inspecting GitHub repositories for README, src, report, SQL, schema, notes, lab, assignment, and docs signals
-- comparing multiple GitHub repositories as learning references
-- building an agent-readable Evidence Pack with source attribution, risk flags, and safety notes
+It is designed for hosts such as Trae, Claude Code, Cursor, and other Model Context Protocol clients. The server keeps the source visible, classifies risk, and makes it harder for downstream agents to confuse public repositories with official course material.
 
-## Release Scope
+## What It Does
 
-Officially supported in this release:
+| Capability | Output |
+| --- | --- |
+| Discover GitHub course repositories | Ranked public repositories with course/project signals |
+| Inspect a known repository | Usable parts such as README, src, report, SQL, schema, notes, labs, assignments, and docs |
+| Compare candidate repositories | Similarities, differences, recommended usage, and safety notes |
+| Build an Evidence Pack | Agent-readable context cards with attribution, risk flags, and citation hints |
+| Route host requests | Stable MCP tools for search, inspection, comparison, and context construction |
 
-- GitHub public repositories
-- public GitHub repositories for university CS course projects
-- public GitHub repositories for course design, labs, experiment code, reports, notes, SQL, schema, src, and README materials
-- GitHub repository search, inspection, comparison, and context-pack construction
+## Dynamic README Notes
 
-Not officially supported in this release:
+GitHub README files do not execute custom JavaScript and sanitize most inline CSS. This repository therefore uses a GitHub-compatible approach:
 
-- non-GitHub websites
-- school course websites
-- teacher homepages
-- blogs and forums
-- Gitee or GitLab
-- generic webpage crawling
-- PDF, DOCX, or PPT deep parsing
-- arbitrary URL deep inspection
+- animated SVG artwork in `assets/readme-hero.svg`
+- badge-based status blocks that render in Markdown
+- language file switching between `README.md` and `README.zh-CN.md`
+- full CSS and animation preview pages in `docs/readme-showcase.html` and `docs/readme-showcase.zh-CN.html`
 
-Rules:
+## Tool Surface
 
-- `source_urls` should point to GitHub repository URLs
-- non-GitHub URLs are marked as `unsupported_source`
-- results are learning references only
-- results are not official course materials
-- do not copy code, reports, labs, assignments, or notes directly
-
-## Core MCP Tools
-
-The five core MCP tools are preserved and compatible.
-
-### `search_course_projects`
-
-Search public GitHub repositories related to university CS course projects, labs, assignments, reports, source code, SQL/schema, notes, and course design references.
-
-### `search_course_resources`
-
-A GitHub-focused wrapper around `search_course_projects` for broader GitHub course resource queries.
-
-- reuses `search_course_projects` retrieval logic
-- is not a separate search stack
-
-### `inspect_course_project`
-
-Inspect a GitHub repository URL or `owner/name` repository identifier.
-
-- identifies usable learning-reference parts such as README, src, report, SQL, schema, notes, lab, assignment, and docs
-- returns clear unsupported guidance for non-GitHub inputs instead of pretending to parse them
-
-### `compare_course_projects`
-
-Compare multiple public GitHub repositories as learning references.
-
-- keeps `recommendation`
-- keeps `safety_note`
-- keeps conservative non-official framing
-
-### `build_course_context`
-
-Build an agent-readable Evidence Pack from GitHub search, inspect, compare, or provided GitHub `source_urls`.
-
-- non-GitHub URLs are preserved as `unsupported_source`
-- unsupported inputs remain low-confidence and are not deeply inspected
-
-## Evidence Pack
-
-`build_course_context` produces a compact Evidence Pack for downstream agents.
-
-Each evidence card includes:
-
-- `title`
-- `url`
-- `source_type`
-- `relevance_reason`
-- `usable_parts`
-- `risk_flags`
-- `recommended_usage`
-- `citation_hint`
-- `raw_score`
-
-Current release `source_type` guidance:
-
-- `github_repo`: officially supported
-- `unknown`: unable to determine
-- `unsupported_source`: non-GitHub URL or unsupported source
-
-Current release `risk_flags` include:
-
-- `not_official`
-- `may_be_outdated`
-- `copy_risk`
-- `low_confidence`
-- `broad_query`
-- `unknown_source`
-- `unsupported_source`
+| MCP tool | Purpose |
+| --- | --- |
+| `search_course_projects` | Search public GitHub repositories related to university CS course projects, labs, assignments, reports, source code, SQL/schema, notes, and course design references. |
+| `search_course_resources` | A broader GitHub course-resource wrapper that reuses the project search stack. |
+| `inspect_course_project` | Inspect a GitHub repository URL or `owner/name` identifier and identify usable learning-reference parts. |
+| `compare_course_projects` | Compare multiple public GitHub repositories as candidate learning references. |
+| `build_course_context` | Build an agent-readable Evidence Pack from search, inspect, compare, or provided GitHub source URLs. |
+| `get_project_brief` | Extract a lightweight repository brief with summary, inferred course/school, tech stack, project type, and risk note. |
+| `compare_project_routes` | Compare repository routes, modules, stack choices, and learning paths. |
+| `list_course_resources` | List public GitHub resources for a course. |
 
 ## Recommended Workflow
 
@@ -118,16 +65,10 @@ GitHub search
         -> inspect_course_project
         -> compare_course_projects
         -> build_course_context
-        -> Agent answer
+        -> grounded agent answer
 ```
 
-Typical usage:
-
-- broad GitHub repo discovery: `search_course_resources`
-- project-oriented GitHub repo search: `search_course_projects`
-- known GitHub repo URL: `inspect_course_project`
-- multiple GitHub repo candidates: `compare_course_projects`
-- final agent grounding and citation-ready packaging: `build_course_context`
+Use `search_course_resources` for broad discovery, `inspect_course_project` for a known repository, `compare_course_projects` for choosing between candidates, and `build_course_context` before an agent writes a final grounded answer.
 
 ## Quick Start
 
@@ -165,7 +106,7 @@ Run with Streamable HTTP:
 python -m app.main --transport http --host 127.0.0.1 --port 8000 --mount-path /mcp
 ```
 
-Default endpoint:
+Default HTTP endpoint:
 
 ```text
 http://127.0.0.1:8000/mcp
@@ -173,38 +114,23 @@ http://127.0.0.1:8000/mcp
 
 ## Host Integration
 
-Trae:
+| Host | Examples |
+| --- | --- |
+| Trae | [README](examples/trae/README.md), [python stdio](examples/trae/python-stdio.mcp.json), [stdio](examples/trae/stdio.mcp.json), [http](examples/trae/http.mcp.json) |
+| Cursor | [README](examples/cursor/README.md), [python stdio](examples/cursor/python-stdio.mcp.json), [stdio](examples/cursor/stdio.mcp.json), [http](examples/cursor/http.mcp.json), [mcp](examples/cursor/mcp.json) |
+| Claude Code | [README](examples/claude-code/README.md), [python stdio](examples/claude-code/stdio-python.txt), [stdio cli](examples/claude-code/stdio-cli.txt), [http](examples/claude-code/http.txt) |
 
-- [examples/trae/README.md](examples/trae/README.md)
-- [examples/trae/python-stdio.mcp.json](examples/trae/python-stdio.mcp.json)
-- [examples/trae/stdio.mcp.json](examples/trae/stdio.mcp.json)
-- [examples/trae/http.mcp.json](examples/trae/http.mcp.json)
+## Documentation
 
-Cursor:
-
-- [examples/cursor/README.md](examples/cursor/README.md)
-- [examples/cursor/python-stdio.mcp.json](examples/cursor/python-stdio.mcp.json)
-- [examples/cursor/stdio.mcp.json](examples/cursor/stdio.mcp.json)
-- [examples/cursor/http.mcp.json](examples/cursor/http.mcp.json)
-
-Claude Code:
-
-- [examples/claude-code/README.md](examples/claude-code/README.md)
-- [examples/claude-code/stdio-python.txt](examples/claude-code/stdio-python.txt)
-- [examples/claude-code/stdio-cli.txt](examples/claude-code/stdio-cli.txt)
-- [examples/claude-code/http.txt](examples/claude-code/http.txt)
-
-## Docs
-
-- [docs/tool-routing-guide.md](docs/tool-routing-guide.md)
-- [docs/agent-context-pack.md](docs/agent-context-pack.md)
-- [docs/agent-workflow.md](docs/agent-workflow.md)
-- [docs/routing-diagnostics.md](docs/routing-diagnostics.md)
-- [docs/tool-reference.md](docs/tool-reference.md)
-- [docs/architecture.md](docs/architecture.md)
-- [examples/prompt-cookbook.md](examples/prompt-cookbook.md)
-- [examples/host-test-prompts.md](examples/host-test-prompts.md)
-- [eval/README.md](eval/README.md)
+- [Tool routing guide](docs/tool-routing-guide.md)
+- [Agent context pack](docs/agent-context-pack.md)
+- [Agent workflow](docs/agent-workflow.md)
+- [Routing diagnostics](docs/routing-diagnostics.md)
+- [Tool reference](docs/tool-reference.md)
+- [Architecture](docs/architecture.md)
+- [Prompt cookbook](examples/prompt-cookbook.md)
+- [Host test prompts](examples/host-test-prompts.md)
+- [Evaluation README](eval/README.md)
 
 ## Validation
 
@@ -226,10 +152,10 @@ python eval/run_agent_context_eval.py
 python eval/run_workflow_eval.py
 ```
 
-## Safety
+## Safety Boundary
 
 - Treat all results as public GitHub learning references.
-- Do not describe GitHub repositories as official course materials.
-- Keep the source visible in downstream answers.
+- Do not describe discovered repositories as official course materials.
+- Keep source URLs visible in downstream answers.
 - Do not directly copy code, reports, labs, assignments, or notes for submission.
-- Use the server for research, comparison, and grounded context building, not for submit-ready coursework generation.
+- Use the server for research, comparison, and grounded context building, not submit-ready coursework generation.

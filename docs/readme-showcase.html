@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Course Project Intelligence Showcase</title>
+    <link rel="stylesheet" href="readme-showcase.css">
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="shell nav-inner">
+        <a class="brand" href="../README.md">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>Course Project Intelligence</span>
+        </a>
+        <div class="language-switch" aria-label="Language switch">
+          <a href="readme-showcase.html" aria-current="page">English</a>
+          <a href="readme-showcase.zh-CN.html">中文</a>
+        </div>
+      </div>
+    </nav>
+
+    <main>
+      <section class="shell hero">
+        <div class="hero-copy">
+          <h1>GitHub course intelligence for MCP agents.</h1>
+          <p>
+            Discover public university CS project repositories, inspect their usable parts,
+            compare candidates, and package attribution-ready Evidence Packs for grounded answers.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="../README.md">Open README</a>
+            <a class="button" href="../README.zh-CN.md">Switch to Chinese README</a>
+          </div>
+        </div>
+
+        <div class="pipeline" aria-label="Animated retrieval pipeline">
+          <div class="node">
+            <span class="pulse-dot" aria-hidden="true"></span>
+            <strong>GitHub sources</strong>
+            <span>Public course projects, labs, reports, SQL/schema assets, notes, and docs.</span>
+          </div>
+          <div class="node">
+            <span class="pulse-dot" aria-hidden="true"></span>
+            <strong>MCP tools</strong>
+            <span>Search, inspect, compare, route, and construct a normalized context pack.</span>
+          </div>
+          <div class="node">
+            <span class="pulse-dot" aria-hidden="true"></span>
+            <strong>Evidence Pack</strong>
+            <span>Source attribution, risk flags, recommended usage, and citation hints.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="shell section">
+        <h2>CSS display system</h2>
+        <p class="section-lead">
+          This page demonstrates the dynamic visual layer that cannot be embedded directly into GitHub Markdown:
+          animated pipeline cards, hover states, status tiles, responsive layout, and reduced-motion support.
+        </p>
+        <div class="cards">
+          <article class="card">
+            <h3>Discover</h3>
+            <p>Find public GitHub repositories that look like course projects, labs, reports, or learning notes.</p>
+          </article>
+          <article class="card">
+            <h3>Inspect</h3>
+            <p>Identify README, source, report, schema, assignment, note, and documentation signals.</p>
+          </article>
+          <article class="card">
+            <h3>Ground</h3>
+            <p>Build a compact context pack with attribution and safety language before an agent answers.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="shell section">
+        <h2>Repository status</h2>
+        <div class="status-grid">
+          <div class="status">
+            <b>Transport</b>
+            <span>stdio and Streamable HTTP</span>
+          </div>
+          <div class="status">
+            <b>Source scope</b>
+            <span>Public GitHub repositories</span>
+          </div>
+          <div class="status">
+            <b>Host targets</b>
+            <span>Trae, Cursor, Claude Code</span>
+          </div>
+          <div class="status">
+            <b>Safety</b>
+            <span>Learning references, not official material</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="shell section">
+        <h2>Quick command</h2>
+        <div class="code-panel">
+          <div class="code-title">
+            <i></i><i></i><i></i>
+            <span>PowerShell</span>
+          </div>
+          <pre><code>python -m pip install -e .
+python -m app.main --transport http --host 127.0.0.1 --port 8000 --mount-path /mcp</code></pre>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer shell">
+      <span>Built as a documentation showcase for the Course Project Intelligence MCP Server.</span>
+    </footer>
+  </body>
+</html>

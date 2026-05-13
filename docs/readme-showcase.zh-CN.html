@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Course Project Intelligence 中文展示页</title>
+    <link rel="stylesheet" href="readme-showcase.css">
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="shell nav-inner">
+        <a class="brand" href="../README.zh-CN.md">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>Course Project Intelligence</span>
+        </a>
+        <div class="language-switch" aria-label="语言切换">
+          <a href="readme-showcase.html">English</a>
+          <a href="readme-showcase.zh-CN.html" aria-current="page">中文</a>
+        </div>
+      </div>
+    </nav>
+
+    <main>
+      <section class="shell hero">
+        <div class="hero-copy">
+          <h1>面向 MCP Agent 的 GitHub 课程项目情报层。</h1>
+          <p>
+            发现公开高校计算机课程项目仓库，检查可用材料，比较候选项目，并构建带来源归因的 Evidence Pack，
+            让 Agent 给出更可追溯的回答。
+          </p>
+          <div class="actions">
+            <a class="button primary" href="../README.zh-CN.md">打开中文 README</a>
+            <a class="button" href="../README.md">切换到英文 README</a>
+          </div>
+        </div>
+
+        <div class="pipeline" aria-label="动态检索流程">
+          <div class="node">
+            <span class="pulse-dot" aria-hidden="true"></span>
+            <strong>GitHub 来源</strong>
+            <span>公开课程项目、实验、报告、SQL/schema、笔记和文档。</span>
+          </div>
+          <div class="node">
+            <span class="pulse-dot" aria-hidden="true"></span>
+            <strong>MCP 工具</strong>
+            <span>搜索、检查、比较、路由，并构建标准化上下文包。</span>
+          </div>
+          <div class="node">
+            <span class="pulse-dot" aria-hidden="true"></span>
+            <strong>Evidence Pack</strong>
+            <span>来源归因、风险标记、推荐用法和引用提示。</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="shell section">
+        <h2>CSS 展示系统</h2>
+        <p class="section-lead">
+          这个页面展示了无法直接嵌入 GitHub Markdown 的动态视觉层：流程卡片动画、hover 状态、
+          状态信息块、响应式布局，以及 reduced-motion 支持。
+        </p>
+        <div class="cards">
+          <article class="card">
+            <h3>发现</h3>
+            <p>找到看起来像课程项目、实验、报告或学习笔记的公开 GitHub 仓库。</p>
+          </article>
+          <article class="card">
+            <h3>检查</h3>
+            <p>识别 README、源码、报告、schema、作业、笔记和文档等信号。</p>
+          </article>
+          <article class="card">
+            <h3>溯源</h3>
+            <p>在 Agent 回答前构建包含来源与安全提示的紧凑上下文包。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="shell section">
+        <h2>仓库状态</h2>
+        <div class="status-grid">
+          <div class="status">
+            <b>Transport</b>
+            <span>stdio 与 Streamable HTTP</span>
+          </div>
+          <div class="status">
+            <b>来源范围</b>
+            <span>公开 GitHub 仓库</span>
+          </div>
+          <div class="status">
+            <b>Host 目标</b>
+            <span>Trae、Cursor、Claude Code</span>
+          </div>
+          <div class="status">
+            <b>安全边界</b>
+            <span>学习参考，不是官方课程材料</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="shell section">
+        <h2>快速命令</h2>
+        <div class="code-panel">
+          <div class="code-title">
+            <i></i><i></i><i></i>
+            <span>PowerShell</span>
+          </div>
+          <pre><code>python -m pip install -e .
+python -m app.main --transport http --host 127.0.0.1 --port 8000 --mount-path /mcp</code></pre>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer shell">
+      <span>Course Project Intelligence MCP Server 文档展示页。</span>
+    </footer>
+  </body>
+</html>
